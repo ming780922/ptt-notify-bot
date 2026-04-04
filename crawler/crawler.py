@@ -35,50 +35,54 @@ def extract_timestamp(article_id: str) -> int:
 
 def parse_ptt_html(html: str) -> list[dict]:
     """Parse PTT board index HTML and return list of articles."""
-    soup = BeautifulSoup(html, "html.parser")
-    articles = []
-    
-    # PTT 網頁版文章列表，我們只抓取一般文章區塊（r-list-sep 以上的內容）
-    main_content = soup.select_one(".r-list-container") or soup
-    for child in main_content.children:
-        if child.name == "div" and "r-list-sep" in child.get("class", []):
-            break # 遇到分隔線就停止，不抓取下方的置底公告
+    try:
+        soup = BeautifulSoup(html, "html.parser")
+        articles = []
         
-        if child.name == "div" and "r-ent" in child.get("class", []):
-            ent = child
-            title_el = ent.select_one(".title a")
-            if not title_el:
-                continue # 跳過已刪除的文章
+        # PTT 網頁版文章列表，我們只抓取一般文章區塊（r-list-sep 以上的內容）
+        main_content = soup.select_one(".r-list-container") or soup
+        for child in main_content.children:
+            if child.name == "div" and "r-list-sep" in child.get("class", []):
+                break # 遇到分隔線就停止，不抓取下方的置底公告
             
-            href = title_el["href"]
-            article_id = extract_article_id(href)
-            if not article_id:
-                continue
+            if child.name == "div" and "r-ent" in child.get("class", []):
+                ent = child
+                title_el = ent.select_one(".title a")
+                if not title_el:
+                    continue # 跳過已刪除的文章
                 
-            nrec_el = ent.select_one(".nrec span")
-            nrec_text = nrec_el.text if nrec_el else "0"
-            
-            # 處理推文數格式 ("爆", "X1", etc.)
-            if nrec_text == "爆":
-                nrec = 100
-            elif nrec_text.startswith("X"):
-                nrec = -10
-            else:
-                try:
-                    nrec = int(nrec_text) if nrec_text.isdigit() else 0
-                except ValueError:
-                    nrec = 0
+                href = title_el["href"]
+                article_id = extract_article_id(href)
+                if not article_id:
+                    continue
                     
-            articles.append({
-                "id": article_id,
-                "title": title_el.text.strip(),
-                "url": f"https://www.ptt.cc{href}",
-                "replies": nrec,
-                "timestamp": extract_timestamp(article_id)
-            })
-        
-    # PTT index.html 是由舊到新，我們將其反轉，讓最前面的文章是最新
-    return list(reversed(articles))
+                nrec_el = ent.select_one(".nrec span")
+                nrec_text = nrec_el.text if nrec_el else "0"
+                
+                # 處理推文數格式 ("爆", "X1", etc.)
+                if nrec_text == "爆":
+                    nrec = 100
+                elif nrec_text.startswith("X"):
+                    nrec = -10
+                else:
+                    try:
+                        nrec = int(nrec_text) if nrec_text.isdigit() else 0
+                    except ValueError:
+                        nrec = 0
+                        
+                articles.append({
+                    "id": article_id,
+                    "title": title_el.text.strip(),
+                    "url": f"https://www.ptt.cc{href}",
+                    "replies": nrec,
+                    "timestamp": extract_timestamp(article_id)
+                })
+            
+        # PTT index.html 是由舊到新，我們將其反轉，讓最前面的文章是最新
+        return list(reversed(articles))
+    except Exception as e:
+        print(f"  [Parser Error] {e}")
+        return []
 
 async def main() -> None:
     async with httpx.AsyncClient(follow_redirects=True, timeout=CRAWL_JOB_TIMEOUT) as client:
@@ -118,6 +122,9 @@ async def main() -> None:
                     f"https://www.ptt.cc/bbs/{board}/index.html",
                     headers=PTT_HEADERS,
                 )
+                print(f"  [{board}] HTTP Status: {ptt_resp.status_code}")
+                if ptt_resp.status_code != 200:
+                    print(f"  [{board}] Response Body (first 500 chars): {ptt_resp.text[:500]}")
                 ptt_resp.raise_for_status()
                 
                 # ── 3. 解析文章 ──────────────────────────────────────────────
