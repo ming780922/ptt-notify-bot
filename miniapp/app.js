@@ -147,7 +147,15 @@ async function loadPopularBoards() {
 
 // ── Add board modal ───────────────────────────────────────────────────────────
 function renderBoardGrid(container, boards) {
-  container.innerHTML = boards.map(b => `
+  const subNames = new Set(subscriptions.map(s => s.board.toLowerCase()))
+  const filtered = boards.filter(b => !subNames.has(b.name.toLowerCase()))
+
+  if (filtered.length === 0 && boards.length > 0) {
+    container.innerHTML = '<p style="color:var(--hint);font-size:14px;padding:8px 0">所有相關看板皆已訂閱</p>'
+    return
+  }
+
+  container.innerHTML = filtered.map(b => `
     <button class="board-chip" data-board="${esc(b.name)}">
       <span class="board-chip-name">${esc(b.name)}</span>
       ${b.display_name ? `<span class="board-chip-display">${esc(b.display_name)}</span>` : ''}
