@@ -202,7 +202,11 @@ export async function enqueueCrawlBoards(db: D1Database, boards: string[]): Prom
   const placeholders = boards.map(() => '(?)').join(', ')
   await db
     .prepare(
-      `INSERT INTO crawl_queue (board) VALUES ${placeholders} ON CONFLICT DO NOTHING`
+      `INSERT INTO crawl_queue (board)
+       VALUES ${placeholders}
+       ON CONFLICT(board) DO UPDATE SET
+         status = 'pending',
+         dispatched_at = unixepoch()`
     )
     .bind(...boards)
     .run()
