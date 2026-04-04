@@ -60,15 +60,15 @@ export async function getActiveBoardsWithSubscribers(db: D1Database): Promise<Ac
   const result = await db
     .prepare(
       `SELECT
-         bs.board,
+         s.board,
          bs.last_article_id,
          u.telegram_id AS user_id,
          u.telegram_id AS chat_id,
          ROW_NUMBER() OVER (PARTITION BY s.user_id ORDER BY s.created_at ASC) AS board_rank
-       FROM board_snapshots bs
-       JOIN subscriptions s ON s.board = bs.board
+       FROM subscriptions s
        JOIN users u ON u.telegram_id = s.user_id
-       ORDER BY bs.board, s.created_at ASC`
+       LEFT JOIN board_snapshots bs ON bs.board = s.board
+       ORDER BY s.board, s.created_at ASC`
     )
     .all<{
       board: string
