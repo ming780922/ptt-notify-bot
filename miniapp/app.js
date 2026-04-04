@@ -196,9 +196,33 @@ document.getElementById('board-search').addEventListener('input', e => {
     }
   }, 350)
 })
-
 // ── Ad modal logic ──────────────────────────────────────────────────────────
+function showRealAd() {
+  return new Promise((resolve) => {
+    // 檢查 Monetag Rewarded Interstitial 函式是否已載入
+    if (typeof show_10832818 === 'function') {
+      show_10832818().then(async () => {
+        // 使用者觀看完廣告後執行的獎勵函式
+        try {
+          const adResult = await apiFetch('/api/ad/complete', { method: 'POST' })
+          userState = { ...userState, is_unlocked: true, ad_unlocked_at: adResult.ad_unlocked_at }
+          showToast('🎉 廣告觀看完成，已解鎖進階功能！')
+          resolve(true)
+        } catch {
+          showToast('解鎖失敗，請稍後再試')
+          resolve(false)
+        }
+      })
+    } else {
+      // 備援機制：如果廣告還沒準備好，使用模擬視窗
+      console.warn('Monetag not ready, using mock ad fallback')
+      showMockAd().then(resolve)
+    }
+  })
+}
+
 function showMockAd() {
+...
   return new Promise((resolve) => {
     const modal = document.getElementById('modal-ad-mock')
     const timer = document.getElementById('ad-countdown')
@@ -240,7 +264,7 @@ async function handleAddBoard(board) {
     (userState?.subscription_count ?? subscriptions.length) >= FREE_BOARDS_LIMIT
 
   if (willExceedLimit && !userState?.is_unlocked) {
-    const success = await showMockAd()
+    const success = await showRealAd()
     if (!success) return
   }
 
