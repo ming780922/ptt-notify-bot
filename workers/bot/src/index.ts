@@ -39,10 +39,12 @@ export default {
 
 async function runCrawlCron(env: Env): Promise<void> {
   const activeBoards = await getActiveBoardsWithSubscribers(env.DB)
+  console.log(`[cron:crawl] Start: Found ${activeBoards.length} active boards to check`)
   if (activeBoards.length === 0) return
 
   const boardNames = activeBoards.map((b) => b.board)
   await enqueueCrawlBoards(env.DB, boardNames)
+  console.log(`[cron:crawl] Enqueued ${boardNames.length} boards to crawl_queue`)
 
   // How many crawl.yml runs are currently in_progress?
   const runningCount = await getActiveCrawlRunCount(env)
@@ -50,6 +52,7 @@ async function runCrawlCron(env: Env): Promise<void> {
   if (runningCount < CONFIG.MAX_CRAWL_WORKERS) {
     try {
       await dispatchCrawler(env)
+      console.log(`[cron:crawl] Dispatched crawler (GitHub Action) | current in_progress: ${runningCount}`)
     } catch (err) {
       console.error('[cron:crawl] dispatchCrawler failed:', err)
     }
@@ -70,6 +73,8 @@ async function redispatchStalePendingJobs(env: Env): Promise<void> {
 
   if (result.results.length === 0) return
 
+  console.log(`[cron:crawl] Redispatching ${result.results.length} stale pending jobs`)
+
   const runningCount = await getActiveCrawlRunCount(env)
   if (runningCount >= CONFIG.MAX_CRAWL_WORKERS) return
 
@@ -83,6 +88,7 @@ async function redispatchStalePendingJobs(env: Env): Promise<void> {
 // ─── Cron: 2-57/5 — send pending notifications ───────────────────────────────
 
 async function runNotifyCron(env: Env): Promise<void> {
+  console.log('[cron:notify] Start: Checking for pending notifications')
   try {
     await dispatchNotifier(env)
   } catch (err) {
@@ -91,6 +97,7 @@ async function runNotifyCron(env: Env): Promise<void> {
 
   const notifications = await fetchPendingNotifications(env.DB, CONFIG.NOTIFICATION_BATCH_SIZE)
   if (notifications.length > 0) {
+    console.log(`[cron:notify] Found ${notifications.length} pending notifications, sending...`)
     await dispatchNotifications(env.DB, notifications, env.BOT_TOKEN)
   }
   await cleanupOldNotifications(env.DB, CONFIG.CLEANUP_DAYS)
