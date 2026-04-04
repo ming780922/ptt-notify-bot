@@ -67,7 +67,6 @@ document.querySelectorAll('.modal').forEach(modal => {
 function renderSubscriptions() {
   const list = document.getElementById('subscription-list')
   const bar  = document.getElementById('bottom-bar')
-  const adBtn = document.getElementById('ad-btn')
 
   if (subscriptions.length === 0) {
     bar.classList.add('hidden')
@@ -83,17 +82,6 @@ function renderSubscriptions() {
   }
 
   bar.classList.remove('hidden')
-
-  // Ad button label
-  if (userState?.is_unlocked) {
-    adBtn.textContent = '🔓 進階解鎖中'
-    adBtn.classList.add('unlocked')
-    adBtn.onclick = null
-  } else {
-    adBtn.textContent = '🔒 解鎖進階功能'
-    adBtn.classList.remove('unlocked')
-    adBtn.onclick = handleAdClick
-  }
 
   list.innerHTML = `
     <div class="sub-list">
@@ -308,12 +296,6 @@ document.getElementById('confirm-ok').addEventListener('click', async () => {
 })
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
-async function boot() {
-  await Promise.all([loadUser(), loadSubscriptions()])
-}
-
-boot()
-��────────
 async function boot() {
   await Promise.all([loadUser(), loadSubscriptions()])
 }
