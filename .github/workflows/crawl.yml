@@ -1,6 +1,8 @@
 name: Crawl PTT
 
 on:
+  repository_dispatch:
+    types: [crawl]
   workflow_dispatch:
 
 concurrency:

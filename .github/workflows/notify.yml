@@ -1,6 +1,8 @@
 name: Notify PTT
 
 on:
+  repository_dispatch:
+    types: [notify]
   workflow_dispatch:
 
 concurrency:

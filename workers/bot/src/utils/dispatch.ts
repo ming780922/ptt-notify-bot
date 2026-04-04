@@ -7,7 +7,7 @@ import { updateNotificationStatuses } from '../db/queries'
 export async function dispatchCrawler(env: Env): Promise<void> {
   const [owner, repo] = env.GH_REPO.split('/')
   const res = await fetch(
-    `https://api.github.com/repos/${owner}/${repo}/actions/workflows/crawl.yml/dispatches`,
+    `https://api.github.com/repos/${owner}/${repo}/dispatches`,
     {
       method: 'POST',
       headers: {
@@ -17,7 +17,10 @@ export async function dispatchCrawler(env: Env): Promise<void> {
         'User-Agent': 'ptt-notify-bot',
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ ref: 'main' }),
+      body: JSON.stringify({
+        event_type: 'crawl',
+        client_payload: { ref: 'main' },
+      }),
     }
   )
   if (!res.ok) {
@@ -29,7 +32,7 @@ export async function dispatchCrawler(env: Env): Promise<void> {
 export async function dispatchNotifier(env: Env): Promise<void> {
   const [owner, repo] = env.GH_REPO.split('/')
   const res = await fetch(
-    `https://api.github.com/repos/${owner}/${repo}/actions/workflows/notify.yml/dispatches`,
+    `https://api.github.com/repos/${owner}/${repo}/dispatches`,
     {
       method: 'POST',
       headers: {
@@ -39,7 +42,10 @@ export async function dispatchNotifier(env: Env): Promise<void> {
         'User-Agent': 'ptt-notify-bot',
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ ref: 'main' }),
+      body: JSON.stringify({
+        event_type: 'notify',
+        client_payload: { ref: 'main' },
+      }),
     }
   )
   if (!res.ok) {
