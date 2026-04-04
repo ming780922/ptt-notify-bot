@@ -101,7 +101,6 @@ function renderSubscriptions() {
         <div class="sub-card" data-board="${esc(s.board)}">
           <div class="sub-card-left">
             <span class="sub-card-name">${esc(s.board)}</span>
-            <span class="sub-card-rank">第 ${s.board_rank} 個看板${s.board_rank <= FREE_BOARDS_LIMIT ? '' : userState?.is_unlocked ? '・已解鎖' : '・進階'}</span>
           </div>
           <span class="sub-card-chevron">›</span>
         </div>`).join('')}
