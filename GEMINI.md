@@ -48,7 +48,7 @@ npx wrangler d1 execute ptt-notify-bot-db --remote --file=src/db/schema.sql
 
 ### Deployment
 - **Workers**: `npx wrangler deploy` within the respective worker directory.
-- **Mini App**: `npx wrangler pages deploy . --project-name ptt-miniapp` within `miniapp/`.
+- **Mini App**: `npx wrangler pages deploy . --project-name ptt-notify-miniapp` within `miniapp/`.
 - **Secrets**: Use `npx wrangler secret put` to set required environment variables (see `CLAUDE.md` for full list).
 
 ## Development Conventions
