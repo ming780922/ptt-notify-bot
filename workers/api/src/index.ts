@@ -57,7 +57,15 @@ export default {
         return error('Not Found', 404)
       }
 
-      // ── API routes (require Telegram initData auth) ───────────────────────
+      // ── Public API routes ──────────────────────────────────────────────────
+      if (pathname === '/api/boards/popular' && method === 'GET') {
+        return handlePopularBoards(env)
+      }
+      if (pathname === '/api/boards/search' && method === 'GET') {
+        return handleSearchBoards(url, env)
+      }
+
+      // ── Protected API routes (require Telegram initData auth) ──────────────
       if (pathname.startsWith('/api/')) {
         const tgUser = await authenticateTelegram(request, env)
         if (tgUser instanceof Response) return tgUser
@@ -74,12 +82,6 @@ export default {
         const delMatch = pathname.match(/^\/api\/subscriptions\/(.+)$/)
         if (delMatch && method === 'DELETE') {
           return handleDeleteSubscription(env, tgUser.telegramId, decodeURIComponent(delMatch[1]))
-        }
-        if (pathname === '/api/boards/popular' && method === 'GET') {
-          return handlePopularBoards(env)
-        }
-        if (pathname === '/api/boards/search' && method === 'GET') {
-          return handleSearchBoards(url, env)
         }
         if (pathname === '/api/ad/complete' && method === 'POST') {
           return handleAdComplete(env, tgUser.telegramId)
@@ -102,11 +104,17 @@ async function authenticateTelegram(
   env: Env
 ): Promise<TelegramUser | Response> {
   const authHeader = request.headers.get('Authorization')
-  if (!authHeader?.startsWith('tma ')) return error('Unauthorized', 401)
+  if (!authHeader?.startsWith('tma ')) {
+    console.error('[auth] missing/invalid authorization header')
+    return error('Unauthorized', 401)
+  }
 
   const initData = authHeader.slice(4)
   const tgUser = await verifyTelegramInitData(initData, env.BOT_TOKEN)
-  if (!tgUser) return error('Unauthorized', 401)
+  if (!tgUser) {
+    console.error('[auth] verification failed for initData')
+    return error('Unauthorized', 401)
+  }
 
   await upsertUser(env.DB, tgUser.telegramId, tgUser.username)
   return tgUser
@@ -149,7 +157,10 @@ async function handleAddSubscription(
 
   // Check if board exists on PTT
   const boardExists = await checkPttBoard(board)
-  if (!boardExists) return error('Board not found on PTT', 404)
+  if (!boardExists) {
+    console.warn(`[api] handleAddSubscription: Board not found on PTT: ${board}`)
+    return error('Board not found on PTT', 404)
+  }
 
   // upsertBoard with is_verified = 1
   await upsertBoard(env.DB, board, board, 1)
@@ -169,6 +180,8 @@ async function handleAddSubscription(
   const sub = await getSubscriptionByUserAndBoard(env.DB, telegramId, board)
   if (sub) await createSubscriptionFilter(env.DB, sub.id)
 
+  console.log(`[api] handleAddSubscription: Successfully subscribed to ${board} for ${telegramId}`)
+
   // Return subscription with board_rank
   const allSubs = await getSubscriptionsByUser(env.DB, telegramId)
   const created = allSubs.find((s) => s.board === board)
@@ -185,15 +198,30 @@ async function handleDeleteSubscription(
 }
 
 async function handlePopularBoards(env: Env): Promise<Response> {
-  const boards = await getPopularBoards(env.DB)
-  return json(boards)
+  console.log('[api] handlePopularBoards: Fetching popular boards from D1...')
+  try {
+    const boards = await getPopularBoards(env.DB)
+    console.log(`[api] handlePopularBoards: Found ${boards.length} popular boards`)
+    return json(boards)
+  } catch (err) {
+    console.error('[api] handlePopularBoards: Error querying D1:', err)
+    return error('Database error while fetching popular boards', 500)
+  }
 }
 
 async function handleSearchBoards(url: URL, env: Env): Promise<Response> {
   const q = url.searchParams.get('q')?.trim() ?? ''
   if (!q) return json([])
-  const boards = await searchBoards(env.DB, q)
-  return json(boards)
+
+  console.log(`[api] handleSearchBoards: Searching boards with query "${q}"...`)
+  try {
+    const boards = await searchBoards(env.DB, q)
+    console.log(`[api] handleSearchBoards: Found ${boards.length} matching boards`)
+    return json(boards)
+  } catch (err) {
+    console.error(`[api] handleSearchBoards: Error searching boards for "${q}":`, err)
+    return error(`Database error while searching for "${q}"`, 500)
+  }
 }
 
 async function handleAdComplete(env: Env, telegramId: number): Promise<Response> {
@@ -281,12 +309,15 @@ async function handleQueue(request: Request, env: Env): Promise<Response> {
 
 async function checkPttBoard(board: string): Promise<boolean> {
   try {
+    // PTT doesn't have an public /index.json endpoint by default.
+    // We check the board's main index.html to verify existence.
     const res = await fetch(
-      `https://www.ptt.cc/bbs/${encodeURIComponent(board)}/index.json`,
+      `https://www.ptt.cc/bbs/${encodeURIComponent(board)}/index.html`,
       { headers: { Cookie: 'over18=1' } }
     )
     return res.status === 200
-  } catch {
+  } catch (err) {
+    console.error(`[api] checkPttBoard: Error fetching PTT for board ${board}:`, err)
     return false
   }
 }
