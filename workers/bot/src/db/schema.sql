@@ -75,7 +75,7 @@ INSERT INTO boards (name, display_name, is_popular) VALUES
   ('WomenTalk',    '女孩版',       1),
   ('Boy-Girl',     '男女版',       1),
   ('joke',         '笑話',         1),
-  ('C_Chat',       '西斯',         1),
+  ('C_Chat',       '希洽',         1),
   ('HatePolitics', '政黑',         1),
   ('creditcard',   '信用卡',       1),
   ('home-sale',    '房屋買賣',     1),
