@@ -216,6 +216,22 @@ async function handleSearchBoards(url: URL, env: Env): Promise<Response> {
   console.log(`[api] handleSearchBoards: Searching boards with query "${q}"...`)
   try {
     const boards = await searchBoards(env.DB, q)
+
+    // 如果沒有精確匹配，嘗試直接搜尋 PTT
+    const hasExactMatch = boards.some((b) => b.name.toLowerCase() === q.toLowerCase())
+    const isValidName = /^[a-zA-Z0-9_-]{3,20}$/.test(q)
+
+    if (!hasExactMatch && isValidName) {
+      console.log(`[api] handleSearchBoards: Performing real-time PTT check for "${q}"...`)
+      const exists = await checkPttBoard(q)
+      if (exists) {
+        console.log(`[api] handleSearchBoards: Found board "${q}" on PTT, upserting...`)
+        // 抓取成功後，將其存入 DB 以便未來搜尋
+        await upsertBoard(env.DB, q, q, 1)
+        boards.push({ name: q, display_name: q, is_verified: 1, is_popular: 0 })
+      }
+    }
+
     console.log(`[api] handleSearchBoards: Found ${boards.length} matching boards`)
     return json(boards)
   } catch (err) {
