@@ -50,32 +50,32 @@ def parse_ptt_html(html: str) -> list[dict]:
             if not title_el:
                 continue # 跳過已刪除的文章
             
-        href = title_el["href"]
-        article_id = extract_article_id(href)
-        if not article_id:
-            continue
-            
-        nrec_el = ent.select_one(".nrec span")
-        nrec_text = nrec_el.text if nrec_el else "0"
-        
-        # 處理推文數格式 ("爆", "X1", etc.)
-        if nrec_text == "爆":
-            nrec = 100
-        elif nrec_text.startswith("X"):
-            nrec = -10
-        else:
-            try:
-                nrec = int(nrec_text) if nrec_text.isdigit() else 0
-            except ValueError:
-                nrec = 0
+            href = title_el["href"]
+            article_id = extract_article_id(href)
+            if not article_id:
+                continue
                 
-        articles.append({
-            "id": article_id,
-            "title": title_el.text.strip(),
-            "url": f"https://www.ptt.cc{href}",
-            "replies": nrec,
-            "timestamp": extract_timestamp(article_id)
-        })
+            nrec_el = ent.select_one(".nrec span")
+            nrec_text = nrec_el.text if nrec_el else "0"
+            
+            # 處理推文數格式 ("爆", "X1", etc.)
+            if nrec_text == "爆":
+                nrec = 100
+            elif nrec_text.startswith("X"):
+                nrec = -10
+            else:
+                try:
+                    nrec = int(nrec_text) if nrec_text.isdigit() else 0
+                except ValueError:
+                    nrec = 0
+                    
+            articles.append({
+                "id": article_id,
+                "title": title_el.text.strip(),
+                "url": f"https://www.ptt.cc{href}",
+                "replies": nrec,
+                "timestamp": extract_timestamp(article_id)
+            })
         
     # PTT index.html 是由舊到新，我們將其反轉，讓最前面的文章是最新
     return list(reversed(articles))
@@ -135,11 +135,11 @@ async def main() -> None:
                         break
                     
                     if a["id"] == last_article_id:
-                        break
+                        continue
                     
                     # 容錯：如果原 ID 被刪除，則比對時間戳記
                     if a["timestamp"] <= last_ts:
-                        break
+                        continue
                         
                     new_articles.append(a)
                 
