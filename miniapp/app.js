@@ -17,17 +17,22 @@ let searchTimer = null
 
 // ── API ──────────────────────────────────────────────────────────────────────
 async function apiFetch(path, options = {}) {
-  const res = await fetch(API_BASE + path, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'tma ' + tg.initData,
-      ...options.headers,
-    },
-  })
-  const data = await res.json()
-  if (!res.ok) throw Object.assign(new Error(data.error || 'API error'), { status: res.status, data })
-  return data
+  const url = API_BASE + path
+  try {
+    const res = await fetch(url, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'tma ' + tg.initData,
+        ...options.headers,
+      },
+    })
+    const data = await res.json()
+    if (!res.ok) throw Object.assign(new Error(data.error || 'API error'), { status: res.status, data })
+    return data
+  } catch (err) {
+    throw err
+  }
 }
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
