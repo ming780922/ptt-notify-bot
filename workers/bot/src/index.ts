@@ -1,0 +1,97 @@
+import { webhookCallback } from 'grammy'
+import type { Env } from './env'
+import { createBot } from './bot'
+import {
+  getActiveBoardsWithSubscribers,
+  enqueueCrawlBoards,
+  fetchPendingNotifications,
+  cleanupOldNotifications,
+} from './db/queries'
+import { dispatchCrawler, dispatchNotifier, getActiveCrawlRunCount, dispatchNotifications } from './utils/dispatch'
+import { CONFIG } from '../../shared/config'
+
+// ─── Cron identifiers ─────────────────────────────────────────────────────────
+const CRON_CRAWL = '*/5 * * * *'
+const CRON_NOTIFY = '2-57/5 * * * *'
+
+export default {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    const url = new URL(request.url)
+
+    if (url.pathname === '/webhook' && request.method === 'POST') {
+      const bot = createBot(env)
+      return webhookCallback(bot, 'cloudflare-mod')(request)
+    }
+
+    return new Response('OK', { status: 200 })
+  },
+
+  async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
+    if (event.cron === CRON_CRAWL) {
+      ctx.waitUntil(runCrawlCron(env))
+    } else if (event.cron === CRON_NOTIFY) {
+      ctx.waitUntil(runNotifyCron(env))
+    }
+  },
+}
+
+// ─── Cron: */5 — enqueue boards & dispatch crawler ───────────────────────────
+
+async function runCrawlCron(env: Env): Promise<void> {
+  const activeBoards = await getActiveBoardsWithSubscribers(env.DB)
+  if (activeBoards.length === 0) return
+
+  const boardNames = activeBoards.map((b) => b.board)
+  await enqueueCrawlBoards(env.DB, boardNames)
+
+  // How many crawl.yml runs are currently in_progress?
+  const runningCount = await getActiveCrawlRunCount(env)
+
+  if (runningCount < CONFIG.MAX_CRAWL_WORKERS) {
+    try {
+      await dispatchCrawler(env)
+    } catch (err) {
+      console.error('[cron:crawl] dispatchCrawler failed:', err)
+    }
+  }
+
+  // Re-dispatch stale pending jobs (dispatched_at older than 90s and still pending)
+  await redispatchStalePendingJobs(env)
+}
+
+async function redispatchStalePendingJobs(env: Env): Promise<void> {
+  const cutoff = Math.floor(Date.now() / 1000) - 90
+  const result = await env.DB
+    .prepare(
+      `SELECT board FROM crawl_queue WHERE status = 'pending' AND dispatched_at < ?`
+    )
+    .bind(cutoff)
+    .all<{ board: string }>()
+
+  if (result.results.length === 0) return
+
+  const runningCount = await getActiveCrawlRunCount(env)
+  if (runningCount >= CONFIG.MAX_CRAWL_WORKERS) return
+
+  try {
+    await dispatchCrawler(env)
+  } catch (err) {
+    console.error('[cron:crawl] redispatch failed:', err)
+  }
+}
+
+// ─── Cron: 2-57/5 — send pending notifications ───────────────────────────────
+
+async function runNotifyCron(env: Env): Promise<void> {
+  try {
+    await dispatchNotifier(env)
+  } catch (err) {
+    console.error('[cron:notify] dispatchNotifier failed:', err)
+  }
+
+  const notifications = await fetchPendingNotifications(env.DB, CONFIG.NOTIFICATION_BATCH_SIZE)
+  if (notifications.length > 0) {
+    await dispatchNotifications(env.DB, notifications, env.BOT_TOKEN)
+  }
+  await cleanupOldNotifications(env.DB, CONFIG.CLEANUP_DAYS)
+}

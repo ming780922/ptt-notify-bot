@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>PTT 通知訂閱</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- ── Main ───────────────────────────────────────────────────────────── -->
+  <div id="app">
+    <div id="subscription-list"></div>
+  </div>
+
+  <!-- ── Bottom bar ─────────────────────────────────────────────────────── -->
+  <div id="bottom-bar" class="bottom-bar hidden">
+    <button id="add-btn" class="add-btn">＋ 新增看板</button>
+    <button id="ad-btn" class="ad-btn"></button>
+  </div>
+
+  <!-- ── Modal: Add board ───────────────────────────────────────────────── -->
+  <div id="modal-add" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-sheet">
+      <div class="modal-header">
+        <span class="modal-title">新增看板</span>
+        <button class="modal-close" data-close="modal-add">✕</button>
+      </div>
+      <div class="modal-body">
+        <input id="board-search" class="search-input" type="text"
+               placeholder="搜尋看板名稱…" autocomplete="off" />
+        <div id="search-results" class="board-grid hidden"></div>
+        <p class="section-label">熱門看板</p>
+        <div id="popular-boards" class="board-grid"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Modal: Edit board ─────────────────────────────────────────────── -->
+  <div id="modal-edit" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-sheet">
+      <div class="modal-header">
+        <span id="edit-board-name" class="modal-title"></span>
+        <button class="modal-close" data-close="modal-edit">✕</button>
+      </div>
+      <div class="modal-body">
+        <p class="keyword-placeholder">🔧 關鍵字過濾功能即將推出</p>
+        <button id="delete-btn" class="delete-btn">刪除訂閱</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Modal: Confirm delete ──────────────────────────────────────────── -->
+  <div id="modal-confirm" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-sheet modal-sheet--sm">
+      <div class="modal-header">
+        <span class="modal-title">確認刪除</span>
+      </div>
+      <div class="modal-body">
+        <p id="confirm-text" class="confirm-text"></p>
+        <div class="confirm-actions">
+          <button id="confirm-cancel" class="btn-secondary">取消</button>
+          <button id="confirm-ok" class="btn-danger">刪除</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

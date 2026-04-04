@@ -1,0 +1,30 @@
+name: Crawl PTT
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: crawl
+  cancel-in-progress: false
+
+jobs:
+  crawl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    env:
+      API_WORKER_URL: ${{ secrets.API_WORKER_URL }}
+      INTERNAL_SECRET: ${{ secrets.INTERNAL_SECRET }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      MINIAPP_URL: ${{ secrets.MINIAPP_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install httpx
+
+      - name: Run crawler
+        run: python crawler/crawler.py

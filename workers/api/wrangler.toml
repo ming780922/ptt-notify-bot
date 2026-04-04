@@ -1,0 +1,13 @@
+name = "ptt-notify-bot-api"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+[observability]
+enabled = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "ptt-notify-bot-db"
+# 與 bot worker 共用同一個 D1 資料庫，database_id 需保持一致
+database_id = "4f64d28c-2797-41c6-93ce-15beb5533e67"

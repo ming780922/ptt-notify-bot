@@ -1,0 +1,30 @@
+name: Notify PTT
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: notify
+  cancel-in-progress: false
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      API_WORKER_URL: ${{ secrets.API_WORKER_URL }}
+      INTERNAL_SECRET: ${{ secrets.INTERNAL_SECRET }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      MINIAPP_URL: ${{ secrets.MINIAPP_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install httpx
+
+      - name: Run notifier
+        run: python crawler/notify.py

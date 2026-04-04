@@ -1,0 +1,311 @@
+/* ── Reset & base ─────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:         var(--tg-theme-bg-color,           #ffffff);
+  --text:       var(--tg-theme-text-color,         #000000);
+  --hint:       var(--tg-theme-hint-color,         #999999);
+  --btn-bg:     var(--tg-theme-button-color,       #2481cc);
+  --btn-text:   var(--tg-theme-button-text-color,  #ffffff);
+  --secondary:  var(--tg-theme-secondary-bg-color, #f4f4f5);
+  --danger:     #e53935;
+  --radius:     12px;
+  --bar-height: 64px;
+}
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 15px;
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── App container ────────────────────────────────────────────────────────── */
+#app {
+  padding: 16px 16px calc(var(--bar-height) + 24px);
+  min-height: 100%;
+}
+
+/* ── Onboarding ───────────────────────────────────────────────────────────── */
+.onboarding {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 60px 24px;
+  gap: 12px;
+}
+.onboarding-icon { font-size: 56px; line-height: 1; }
+.onboarding-title { font-size: 18px; font-weight: 600; }
+.onboarding-desc  { color: var(--hint); font-size: 14px; max-width: 260px; }
+.onboarding-cta {
+  margin-top: 8px;
+  padding: 12px 28px;
+  background: var(--btn-bg);
+  color: var(--btn-text);
+  border: none;
+  border-radius: var(--radius);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* ── Subscription cards ───────────────────────────────────────────────────── */
+.sub-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sub-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  background: var(--secondary);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: opacity 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.sub-card:active { opacity: 0.6; }
+
+.sub-card-left { display: flex; flex-direction: column; gap: 2px; }
+.sub-card-name { font-weight: 600; }
+.sub-card-rank { font-size: 12px; color: var(--hint); }
+.sub-card-chevron { color: var(--hint); font-size: 18px; }
+
+/* ── Bottom bar ───────────────────────────────────────────────────────────── */
+.bottom-bar {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  padding: 10px 16px max(env(safe-area-inset-bottom, 0px), 10px);
+  background: var(--bg);
+  border-top: 1px solid color-mix(in srgb, var(--hint) 20%, transparent);
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.bottom-bar.hidden { display: none; }
+
+.add-btn {
+  flex: 1;
+  padding: 11px;
+  background: var(--btn-bg);
+  color: var(--btn-text);
+  border: none;
+  border-radius: var(--radius);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ad-btn {
+  flex-shrink: 0;
+  padding: 11px 14px;
+  background: var(--secondary);
+  color: var(--text);
+  border: none;
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.ad-btn.unlocked { color: var(--hint); cursor: default; }
+
+/* ── Modal ────────────────────────────────────────────────────────────────── */
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: flex-end;
+  z-index: 100;
+  animation: fade-in 0.2s ease;
+}
+.modal.hidden { display: none; }
+
+@keyframes fade-in  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slide-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+.modal-sheet {
+  width: 100%;
+  max-height: 85vh;
+  background: var(--bg);
+  border-radius: var(--radius) var(--radius) 0 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: slide-up 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 8px);
+}
+.modal-sheet--sm { max-height: 50vh; }
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--hint) 15%, transparent);
+  flex-shrink: 0;
+}
+.modal-title { font-weight: 700; font-size: 17px; }
+.modal-close {
+  background: var(--secondary);
+  border: none;
+  border-radius: 50%;
+  width: 28px; height: 28px;
+  font-size: 13px;
+  color: var(--hint);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.modal-body {
+  overflow-y: auto;
+  padding: 12px 16px 8px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ── Search ───────────────────────────────────────────────────────────────── */
+.search-input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1.5px solid color-mix(in srgb, var(--hint) 30%, transparent);
+  border-radius: var(--radius);
+  background: var(--secondary);
+  color: var(--text);
+  font-size: 15px;
+  outline: none;
+  flex-shrink: 0;
+}
+.search-input:focus {
+  border-color: var(--btn-bg);
+}
+
+/* ── Board grid ───────────────────────────────────────────────────────────── */
+.section-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--hint);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+}
+
+.board-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 8px;
+}
+.board-grid.hidden { display: none; }
+
+.board-chip {
+  padding: 8px 12px;
+  background: var(--secondary);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  -webkit-tap-highlight-color: transparent;
+  border: none;
+  text-align: left;
+  color: var(--text);
+}
+.board-chip:active { opacity: 0.6; }
+.board-chip-name { font-weight: 600; font-size: 13px; display: block; }
+.board-chip-display { font-size: 12px; color: var(--hint); display: block; }
+
+/* ── Edit modal ───────────────────────────────────────────────────────────── */
+.keyword-placeholder {
+  color: var(--hint);
+  font-size: 14px;
+  padding: 20px 0 8px;
+  text-align: center;
+}
+
+.delete-btn {
+  width: 100%;
+  padding: 12px;
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  color: var(--danger);
+  border: none;
+  border-radius: var(--radius);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: auto;
+}
+
+/* ── Confirm modal ────────────────────────────────────────────────────────── */
+.confirm-text {
+  color: var(--hint);
+  font-size: 14px;
+  text-align: center;
+  padding: 8px 0;
+}
+.confirm-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+.btn-secondary {
+  flex: 1;
+  padding: 11px;
+  background: var(--secondary);
+  color: var(--text);
+  border: none;
+  border-radius: var(--radius);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn-danger {
+  flex: 1;
+  padding: 11px;
+  background: var(--danger);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* ── Toast ────────────────────────────────────────────────────────────────── */
+.toast {
+  position: fixed;
+  top: 20px; left: 50%; transform: translateX(-50%);
+  background: rgba(0,0,0,0.75);
+  color: #fff;
+  padding: 9px 18px;
+  border-radius: 20px;
+  font-size: 14px;
+  z-index: 200;
+  white-space: nowrap;
+  animation: toast-in 0.2s ease;
+}
+@keyframes toast-in { from { opacity: 0; transform: translateX(-50%) translateY(-6px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+
+/* ── Loading spinner ──────────────────────────────────────────────────────── */
+.spinner {
+  display: flex;
+  justify-content: center;
+  padding: 32px 0;
+}
+.spinner::after {
+  content: '';
+  width: 28px; height: 28px;
+  border: 3px solid color-mix(in srgb, var(--hint) 30%, transparent);
+  border-top-color: var(--btn-bg);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
