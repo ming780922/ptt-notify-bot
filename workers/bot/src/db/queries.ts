@@ -168,7 +168,7 @@ export async function searchBoards(db: D1Database, query: string): Promise<Board
   const result = await db
     .prepare(
       `SELECT * FROM boards
-       WHERE name LIKE ? OR display_name LIKE ?
+       WHERE LOWER(name) LIKE LOWER(?) OR LOWER(display_name) LIKE LOWER(?)
        ORDER BY is_popular DESC, name ASC
        LIMIT 20`
     )
