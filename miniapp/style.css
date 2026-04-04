@@ -309,3 +309,64 @@ html, body {
   animation: spin 0.7s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Mock Ad Modal ────────────────────────────────────────────────────────── */
+.modal-content.ad-content {
+  background: var(--bg);
+  width: 90%;
+  max-width: 320px;
+  margin: auto;
+  border-radius: var(--radius);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: ad-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 12px 36px rgba(0,0,0,0.25);
+}
+@keyframes ad-pop { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+.ad-header {
+  padding: 10px 16px;
+  background: var(--secondary);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  color: var(--hint);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.ad-timer {
+  background: var(--bg);
+  color: var(--text);
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-family: monospace;
+}
+
+.ad-body {
+  padding: 32px 24px;
+  text-align: center;
+}
+.ad-placeholder {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.ad-icon { font-size: 48px; margin-bottom: 4px; }
+.ad-title { font-size: 18px; font-weight: 700; color: var(--btn-bg); }
+.ad-body p { font-size: 14px; color: var(--hint); line-height: 1.5; }
+
+.ad-close-btn {
+  padding: 14px;
+  background: var(--btn-bg);
+  color: var(--btn-text);
+  border: none;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.ad-close-btn:active { opacity: 0.8; }
+.ad-close-btn.hidden { display: none; }

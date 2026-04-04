@@ -209,19 +209,51 @@ document.getElementById('board-search').addEventListener('input', e => {
   }, 350)
 })
 
+// ── Ad modal logic ──────────────────────────────────────────────────────────
+function showMockAd() {
+  return new Promise((resolve) => {
+    const modal = document.getElementById('modal-ad-mock')
+    const timer = document.getElementById('ad-countdown')
+    const closeBtn = document.getElementById('ad-close-btn')
+    
+    let count = 5
+    timer.textContent = count
+    closeBtn.classList.add('hidden')
+    modal.classList.remove('hidden')
+    
+    const interval = setInterval(() => {
+      count--
+      timer.textContent = count
+      if (count <= 0) {
+        clearInterval(interval)
+        timer.classList.add('hidden')
+        closeBtn.classList.remove('hidden')
+      }
+    }, 1000)
+    
+    closeBtn.onclick = async () => {
+      try {
+        const adResult = await apiFetch('/api/ad/complete', { method: 'POST' })
+        userState = { ...userState, is_unlocked: true, ad_unlocked_at: adResult.ad_unlocked_at }
+        modal.classList.add('hidden')
+        timer.classList.remove('hidden') // Reset for next time
+        resolve(true)
+      } catch {
+        showToast('解鎖失敗，請稍後再試')
+        modal.classList.add('hidden')
+        resolve(false)
+      }
+    }
+  })
+}
+
 async function handleAddBoard(board) {
   const willExceedLimit =
     (userState?.subscription_count ?? subscriptions.length) >= FREE_BOARDS_LIMIT
 
   if (willExceedLimit && !userState?.is_unlocked) {
-    // Mock ad: immediately complete
-    try {
-      const adResult = await apiFetch('/api/ad/complete', { method: 'POST' })
-      userState = { ...userState, is_unlocked: true, ad_unlocked_at: adResult.ad_unlocked_at }
-    } catch {
-      showToast('廣告載入失敗，請稍後再試')
-      return
-    }
+    const success = await showMockAd()
+    if (!success) return
   }
 
   try {
@@ -275,21 +307,13 @@ document.getElementById('confirm-ok').addEventListener('click', async () => {
   }
 })
 
-// ── Ad button ─────────────────────────────────────────────────────────────────
-async function handleAdClick() {
-  try {
-    const result = await apiFetch('/api/ad/complete', { method: 'POST' })
-    userState = { ...userState, is_unlocked: true, ad_unlocked_at: result.ad_unlocked_at }
-    renderSubscriptions()
-    showToast('🎉 已解鎖 24 小時完整通知')
-  } catch {
-    showToast('解鎖失敗，請稍後再試')
-  }
+// ── Boot ──────────────────────────────────────────────────────────────────────
+async function boot() {
+  await Promise.all([loadUser(), loadSubscriptions()])
 }
 
-document.getElementById('ad-btn').addEventListener('click', handleAdClick)
-
-// ── Boot ──────────────────────────────────────────────────────────────────────
+boot()
+��────────
 async function boot() {
   await Promise.all([loadUser(), loadSubscriptions()])
 }

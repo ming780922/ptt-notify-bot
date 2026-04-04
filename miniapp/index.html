@@ -15,8 +15,7 @@
 
   <!-- ── Bottom bar ─────────────────────────────────────────────────────── -->
   <div id="bottom-bar" class="bottom-bar hidden">
-    <button id="add-btn" class="add-btn">＋ 新增看板</button>
-    <button id="ad-btn" class="ad-btn"></button>
+    <button id="add-btn" class="add-btn">＋ 新增看板訂閱</button>
   </div>
 
   <!-- ── Modal: Add board ───────────────────────────────────────────────── -->
@@ -66,6 +65,24 @@
     </div>
   </div>
 
-  <script src="app.js"></script>
+  <!-- Mock Ad Modal -->
+  <div id="modal-ad-mock" class="modal hidden">
+    <div class="modal-content ad-content">
+      <div class="ad-header">
+        <span class="ad-label">贊助商廣告</span>
+        <span id="ad-countdown" class="ad-timer">5</span>
+      </div>
+      <div class="ad-body">
+        <div class="ad-placeholder">
+          <div class="ad-icon">🎁</div>
+          <div class="ad-title">解鎖進階功能</div>
+          <p>觀看完整廣告，即可解鎖 24 小時<br>無限看板訂閱與即時通知！</p>
+        </div>
+      </div>
+      <button id="ad-close-btn" class="ad-close-btn hidden">關閉廣告並解鎖</button>
+    </div>
+  </div>
+
+  <script src="app.js?v=3"></script>
 </body>
 </html>
