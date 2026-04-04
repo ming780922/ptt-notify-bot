@@ -279,9 +279,11 @@ async function handleBoardSnapshot(request: Request, env: Env): Promise<Response
   if (!body.board) return error('board is required')
 
   if (body.last_article_id) {
+    console.log(`[api/internal] handleBoardSnapshot: Updating ${body.board} to last_article_id=${body.last_article_id}`)
     await updateBoardSnapshot(env.DB, body.board, body.last_article_id)
   }
   if (body.mark_done) {
+    console.log(`[api/internal] handleBoardSnapshot: Marking ${body.board} as done`)
     await markCrawlJobDone(env.DB, body.board)
   }
   return json({ ok: true })
@@ -302,6 +304,7 @@ async function handleQueue(request: Request, env: Env): Promise<Response> {
   }))
 
   await enqueuePendingNotifications(env.DB, inserts)
+  console.log(`[api/internal] handleQueue: Enqueued ${inserts.length} notifications`)
   return json({ ok: true, queued: inserts.length })
 }
 

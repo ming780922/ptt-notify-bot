@@ -105,7 +105,13 @@ async function sendNotification(notification: PendingNotification, botToken: str
     }),
   })
 
-  return res.ok
+  if (!res.ok) {
+    const errorBody = await res.text()
+    console.error(`[dispatch] sendNotification failed for user ${notification.user_id} (${res.status}): ${errorBody}`)
+    return false
+  }
+
+  return true
 }
 
 function escapeMarkdown(text: string): string {
