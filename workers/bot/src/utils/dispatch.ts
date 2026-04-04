@@ -96,9 +96,8 @@ async function sendNotification(notification: PendingNotification, botToken: str
   const url = notification.article_url ?? ''
   const text =
     `📋 *${escapeMarkdown(notification.board)}* 有新文章\n\n` +
-    `*${escapeMarkdown(title)}*\n` +
-    `💬 ${notification.article_replies} 則回覆\n` +
-    `🔗 [查看文章](${url})`
+    `*${escapeMarkdown(title)}*\n\n` +
+    `${escapeMarkdown(url)}`
 
   const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
     method: 'POST',
@@ -107,7 +106,7 @@ async function sendNotification(notification: PendingNotification, botToken: str
       chat_id: notification.user_id,
       text,
       parse_mode: 'MarkdownV2',
-      disable_web_page_preview: true,
+      disable_web_page_preview: false,
     }),
   })
 
