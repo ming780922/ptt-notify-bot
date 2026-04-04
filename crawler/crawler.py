@@ -38,11 +38,17 @@ def parse_ptt_html(html: str) -> list[dict]:
     soup = BeautifulSoup(html, "html.parser")
     articles = []
     
-    # PTT 網頁版文章列表在 .r-ent 區塊
-    for ent in soup.select(".r-ent"):
-        title_el = ent.select_one(".title a")
-        if not title_el:
-            continue # 跳過已刪除的文章
+    # PTT 網頁版文章列表，我們只抓取一般文章區塊（r-list-sep 以上的內容）
+    main_content = soup.select_one(".r-list-container") or soup
+    for child in main_content.children:
+        if child.name == "div" and "r-list-sep" in child.get("class", []):
+            break # 遇到分隔線就停止，不抓取下方的置底公告
+        
+        if child.name == "div" and "r-ent" in child.get("class", []):
+            ent = child
+            title_el = ent.select_one(".title a")
+            if not title_el:
+                continue # 跳過已刪除的文章
             
         href = title_el["href"]
         article_id = extract_article_id(href)
