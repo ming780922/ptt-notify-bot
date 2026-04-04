@@ -119,6 +119,7 @@ async def main() -> None:
                 if not articles:
                     print(f"  [{board}] 解析失敗或無文章，跳過")
                     continue
+                print(f"  [{board}] 解析完成，取得 {len(articles)} 篇文章")
 
                 # ── 4. 計算新文章 (比對 ID 或時間戳記) ─────────────────────────
                 new_articles = []
@@ -137,9 +138,11 @@ async def main() -> None:
                     new_articles.append(a)
                 
                 if last_article_id is None:
-                    print(f"  [{board}] 首次紀錄，設定最新 ID={articles[0]['id']}")
+                    print(f"  [{board}] 首次紀錄 (Snapshot 為空)，設定最新 ID={articles[0]['id']}，本次不發送通知")
                 else:
                     print(f"  [{board}] 發現 {len(new_articles)} 篇新文章")
+                    for na in new_articles:
+                        print(f"    - [新文章] {na['id']} | {na['title']}")
 
                 # 反轉回由舊到新，確保通知順序正確
                 new_articles = list(reversed(new_articles))
@@ -169,12 +172,13 @@ async def main() -> None:
                     ]
                     for i in range(0, len(notifications), 50):
                         batch = notifications[i:i+50]
-                        await client.post(
+                        push_resp = await client.post(
                             f"{API_WORKER_URL}/internal/queue",
                             json={"notifications": batch},
                             headers=INTERNAL_HEADERS,
                         )
-                        print(f"  已將 {len(batch)} 筆通知加入隊列")
+                        push_resp.raise_for_status()
+                        print(f"  已將 {len(batch)} 筆通知加入隊列 (API 回傳: {push_resp.json()})")
 
             except Exception as e:
                 print(f"Error crawling {board}: {e}")
