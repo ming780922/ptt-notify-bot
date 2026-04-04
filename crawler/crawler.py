@@ -116,10 +116,16 @@ async def main() -> None:
             last_ts = extract_timestamp(last_article_id) if last_article_id else 0
             print(f"Crawling {board} (last_article_id={last_article_id}, ts={last_ts})…")
 
+import traceback
+
+# ... (中間代碼不變) ...
+
             try:
                 # ── 2. 爬取 PTT HTML ─────────────────────────────────────────
+                url = f"https://www.ptt.cc/bbs/{board}/index.html"
+                print(f"  [{board}] Fetching: {url}")
                 ptt_resp = await client.get(
-                    f"https://www.ptt.cc/bbs/{board}/index.html",
+                    url,
                     headers=PTT_HEADERS,
                 )
                 print(f"  [{board}] HTTP Status: {ptt_resp.status_code}")
