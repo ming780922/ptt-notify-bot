@@ -24,7 +24,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install httpx
+        run: pip install httpx beautifulsoup4
 
       - name: Run crawler
         run: python crawler/crawler.py
