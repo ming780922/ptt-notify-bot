@@ -1,7 +1,7 @@
 /* globals Telegram */
 'use strict'
 
-const API_BASE = '__API_BASE_URL__'
+const API_BASE = 'https://ptt-notify-bot-api.ming780922.workers.dev'
 const FREE_BOARDS_LIMIT = 2
 
 const tg = window.Telegram.WebApp
