@@ -304,8 +304,9 @@ async function handleAddBoard(board) {
 
   // 超過免費額度（例如 >= 2）則跳廣告
   if (count >= FREE_BOARDS_LIMIT) {
-    const isThresholdBoard = (count === FREE_BOARDS_LIMIT)
-    const success = await showRealAd(isThresholdBoard)
+    // 未解鎖時才需重置 24h 計時器；已解鎖期間追加看板不重置到期時間
+    const shouldResetTimer = !userState?.is_unlocked
+    const success = await showRealAd(shouldResetTimer)
     if (!success) return
   }
 
