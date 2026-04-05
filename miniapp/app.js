@@ -211,6 +211,9 @@ async function showRealAd(shouldResetTimer = true) {
   const confirmed = await showMockAd(true) // 預備模式
   if (!confirmed) return false
 
+  // 使用者點選確定後，先關閉確認視窗
+  document.getElementById('modal-ad-mock').classList.add('hidden')
+
   return new Promise((resolve) => {
     if (typeof show_10832818 === 'function') {
       show_10832818().then(async () => {
