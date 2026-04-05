@@ -95,8 +95,8 @@ async function sendNotification(notification: PendingNotification, botToken: str
   const title = notification.article_title ?? ''
   const url = notification.article_url ?? ''
   const text =
-    `📋 *${escapeMarkdown(notification.board)}* 有新文章\n\n` +
-    `*${escapeMarkdown(title)}*\n\n` +
+    `📋 *${escapeMarkdown(notification.board)}* 有新文章\n` +
+    `*${escapeMarkdown(title)}*\n` +
     `${escapeMarkdown(url)}`
 
   const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
