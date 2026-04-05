@@ -123,20 +123,28 @@ async def main() -> None:
                 print(f"  [Debug] ID: {n['id']}, Rank: {board_rank}, UnlockedAt: {ad_unlocked_at}, ExpiryNotified: {expiry_notified}, IsUnlocked: {is_unlocked}")
 
                 try:
-                    # 1. 決定發送哪種通知
+                    extra_update = {}
+                    needs_expiry = (
+                        board_rank > FREE_BOARDS_LIMIT
+                        and not is_unlocked
+                        and expiry_notified == 0
+                        and not sent_expiry_this_run
+                    )
+
+                    # 1. 到期提醒優先發送，讓使用者先看到說明再看隱藏通知
+                    if needs_expiry:
+                        print("  [Action] Sending expiry notice...")
+                        await send_expiry_notice(client, n)
+                        extra_update = {"expiry_notified": 1}
+                        sent_expiry_this_run = True
+                        await asyncio.sleep(0.1)
+
+                    # 2. 發送文章通知
                     if board_rank <= FREE_BOARDS_LIMIT or is_unlocked:
                         await send_full_notification(client, n)
                     else:
                         await send_hidden_notification(client, n)
-                    
-                    # 2. 如果已過期且尚未通知過，加發到期提醒 (並檢查本次是否已發過)
-                    extra_update = {}
-                    if board_rank > FREE_BOARDS_LIMIT and not is_unlocked and expiry_notified == 0 and not sent_expiry_this_run:
-                        print("  [Action] Sending expiry notice...")
-                        await send_expiry_notice(client, n)
-                        extra_update = {"expiry_notified": 1}
-                        sent_expiry_this_run = True # 標記已發送，避免同批次重複發送
-                    
+
                     # 3. 記錄狀態更新
                     updates.append({"id": n["id"], "status": "sent", **extra_update})
 
