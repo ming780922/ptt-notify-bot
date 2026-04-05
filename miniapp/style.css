@@ -358,6 +358,11 @@ html, body {
 .ad-title { font-size: 18px; font-weight: 700; color: var(--btn-bg); }
 .ad-body p { font-size: 14px; color: var(--hint); line-height: 1.5; }
 
+.ad-actions {
+  display: flex;
+  flex-direction: column;
+}
+
 .ad-close-btn {
   padding: 14px;
   background: var(--btn-bg);
@@ -370,3 +375,13 @@ html, body {
 }
 .ad-close-btn:active { opacity: 0.8; }
 .ad-close-btn.hidden { display: none; }
+
+.ad-cancel-btn {
+  padding: 12px;
+  background: transparent;
+  color: var(--hint);
+  border: none;
+  font-size: 13px;
+  cursor: pointer;
+}
+.ad-cancel-btn:active { opacity: 0.6; }

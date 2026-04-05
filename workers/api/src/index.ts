@@ -84,7 +84,7 @@ export default {
           return handleDeleteSubscription(env, tgUser.telegramId, decodeURIComponent(delMatch[1]))
         }
         if (pathname === '/api/ad/complete' && method === 'POST') {
-          return handleAdComplete(env, tgUser.telegramId)
+          return handleAdComplete(env, tgUser.telegramId, url)
         }
         return error('Not Found', 404)
       }
@@ -240,9 +240,18 @@ async function handleSearchBoards(url: URL, env: Env): Promise<Response> {
   }
 }
 
-async function handleAdComplete(env: Env, telegramId: number): Promise<Response> {
-  const adUnlockedAt = await updateAdUnlockedAt(env.DB, telegramId)
-  return json({ ok: true, ad_unlocked_at: adUnlockedAt })
+async function handleAdComplete(env: Env, telegramId: number, url: URL): Promise<Response> {
+  const resetTimer = url.searchParams.get('reset') === 'true'
+  const now = Math.floor(Date.now() / 1000)
+
+  if (resetTimer) {
+    // 重置解鎖時間與通知狀態
+    await env.DB.prepare(
+      `UPDATE users SET ad_unlocked_at = ?, expiry_notified = 0 WHERE telegram_id = ?`
+    ).bind(now, telegramId).run()
+  }
+
+  return json({ ok: true, ad_unlocked_at: now })
 }
 
 // ─── Internal handlers ─────────────────────────────────────────────────────────

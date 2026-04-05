@@ -64,7 +64,8 @@ async def send_hidden_notification(client: httpx.AsyncClient, n: dict) -> None:
 
 
 async def send_expiry_notice(client: httpx.AsyncClient, n: dict) -> None:
-    text = "⏰ 進階通知已到期\n\n部分看板的完整通知已停止"
+    # 這裡未來可以改進為查詢該使用者的所有看板名稱，目前先以簡單文字表示
+    text = "⏰ <b>進階通知已到期</b>\n\n第 3 個以後看板的完整通知已停止\n請觀看廣告以解鎖 24 小時完整通知。"
     keyboard = [[miniapp_button("🎬 立即解鎖")]]
     await send_message(client, n["user_id"], text, keyboard)
 
@@ -82,12 +83,10 @@ async def main() -> None:
                     timeout=15,
                 )
                 resp.raise_for_status()
-                data = resp.json()
+                notifications = resp.json()
             except Exception as e:
                 print(f"Error fetching pending notifications: {e}")
                 break
-
-            notifications: list[dict] = data if isinstance(data, list) else data.get("notifications", [])
 
             if not notifications:
                 print("No pending notifications, exiting")
@@ -104,21 +103,25 @@ async def main() -> None:
 
                 try:
                     if board_rank <= FREE_BOARDS_LIMIT:
+                        # 看板 1-2：永遠免費，完整通知
                         await send_full_notification(client, n)
+                        updates.append({"id": n["id"], "status": "sent"})
 
                     elif is_unlocked:
+                        # 看板 3+：解鎖期間，完整通知 + 延長按鈕
                         await send_full_notification(client, n, show_extend=True)
+                        updates.append({"id": n["id"], "status": "sent"})
 
                     else:
+                        # 看板 3+：未解鎖，隱藏通知
                         await send_hidden_notification(client, n)
-
+                        
+                        # 如果是第一次過期，加發一則到期提醒
                         if expiry_notified == 0:
                             await send_expiry_notice(client, n)
                             updates.append({"id": n["id"], "status": "sent", "expiry_notified": 1})
-                            await asyncio.sleep(0.1)
-                            continue
-
-                    updates.append({"id": n["id"], "status": "sent"})
+                        else:
+                            updates.append({"id": n["id"], "status": "sent"})
 
                 except Exception as e:
                     print(f"Error sending notification {n['id']}: {e}")
