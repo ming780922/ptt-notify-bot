@@ -269,7 +269,7 @@ function showMockAd(isPreCheck = false, shouldResetTimer = true, context = { typ
       closeBtn.classList.remove('hidden')
       closeBtn.disabled = false
       closeBtn.textContent = isAddBoard ? '觀看廣告並新增' : '觀看廣告並解鎖'
-      label.textContent    = isAddBoard ? '' : '解鎖 24 小時完整通知'
+      label.textContent    = ''
 
       closeBtn.onclick = () => {
         closeBtn.classList.add('hidden')
