@@ -31,6 +31,7 @@ async function apiFetch(path, options = {}) {
     if (!res.ok) throw Object.assign(new Error(data.error || 'API error'), { status: res.status, data })
     return data
   } catch (err) {
+    console.error(`[API Error] Fetch to ${url} failed:`, err)
     throw err
   }
 }
@@ -196,17 +197,19 @@ document.getElementById('board-search').addEventListener('input', e => {
     }
   }, 350)
 })
+
 // ── Ad modal logic ──────────────────────────────────────────────────────────
-function showRealAd() {
+async function showRealAd(shouldResetTimer = true) {
+  const confirmed = await showMockAd(true) // 預備模式
+  if (!confirmed) return false
+
   return new Promise((resolve) => {
-    // 檢查 Monetag Rewarded Interstitial 函式是否已載入
     if (typeof show_10832818 === 'function') {
       show_10832818().then(async () => {
-        // 使用者觀看完廣告後執行的獎勵函式
         try {
-          const adResult = await apiFetch('/api/ad/complete', { method: 'POST' })
-          userState = { ...userState, is_unlocked: true, ad_unlocked_at: adResult.ad_unlocked_at }
-          showToast('🎉 廣告觀看完成，已解鎖進階功能！')
+          const adResult = await apiFetch(`/api/ad/complete?reset=${shouldResetTimer}`, { method: 'POST' })
+          userState = { ...userState, is_unlocked: shouldResetTimer, ad_unlocked_at: adResult.ad_unlocked_at }
+          showToast(shouldResetTimer ? '🎉 24 小時權限已解鎖！' : '✅ 已完成新增門票')
           resolve(true)
         } catch {
           showToast('解鎖失敗，請稍後再試')
@@ -214,24 +217,45 @@ function showRealAd() {
         }
       })
     } else {
-      // 備援機制：如果廣告還沒準備好，使用模擬視窗
-      console.warn('Monetag not ready, using mock ad fallback')
-      showMockAd().then(resolve)
+      console.warn('Monetag not ready, starting countdown fallback')
+      showMockAd(false, shouldResetTimer).then(resolve)
     }
   })
 }
 
-function showMockAd() {
-...
+function showMockAd(isPreCheck = false, shouldResetTimer = true) {
   return new Promise((resolve) => {
     const modal = document.getElementById('modal-ad-mock')
     const timer = document.getElementById('ad-countdown')
     const closeBtn = document.getElementById('ad-close-btn')
+    const cancelBtn = document.getElementById('ad-cancel-btn')
+    const label = modal.querySelector('.ad-label')
     
+    modal.classList.remove('hidden')
+
+    if (isPreCheck) {
+      timer.classList.add('hidden')
+      closeBtn.classList.remove('hidden')
+      closeBtn.textContent = '確定，觀看廣告並解鎖'
+      label.textContent = '進階功能確認'
+      
+      closeBtn.onclick = () => {
+        closeBtn.classList.add('hidden')
+        resolve(true)
+      }
+      cancelBtn.onclick = () => {
+        modal.classList.add('hidden')
+        resolve(false)
+      }
+      return
+    }
+
+    label.textContent = '贊助商廣告'
     let count = 5
+    timer.classList.remove('hidden')
     timer.textContent = count
     closeBtn.classList.add('hidden')
-    modal.classList.remove('hidden')
+    closeBtn.textContent = '關閉廣告並完成'
     
     const interval = setInterval(() => {
       count--
@@ -245,10 +269,9 @@ function showMockAd() {
     
     closeBtn.onclick = async () => {
       try {
-        const adResult = await apiFetch('/api/ad/complete', { method: 'POST' })
-        userState = { ...userState, is_unlocked: true, ad_unlocked_at: adResult.ad_unlocked_at }
+        const adResult = await apiFetch(`/api/ad/complete?reset=${shouldResetTimer}`, { method: 'POST' })
+        userState = { ...userState, is_unlocked: shouldResetTimer, ad_unlocked_at: adResult.ad_unlocked_at }
         modal.classList.add('hidden')
-        timer.classList.remove('hidden') // Reset for next time
         resolve(true)
       } catch {
         showToast('解鎖失敗，請稍後再試')
@@ -256,15 +279,22 @@ function showMockAd() {
         resolve(false)
       }
     }
+
+    cancelBtn.onclick = () => {
+      clearInterval(interval)
+      modal.classList.add('hidden')
+      resolve(false)
+    }
   })
 }
 
 async function handleAddBoard(board) {
-  const willExceedLimit =
-    (userState?.subscription_count ?? subscriptions.length) >= FREE_BOARDS_LIMIT
+  const count = userState?.subscription_count ?? subscriptions.length
 
-  if (willExceedLimit && !userState?.is_unlocked) {
-    const success = await showRealAd()
+  // 超過免費額度（例如 >= 2）則跳廣告
+  if (count >= FREE_BOARDS_LIMIT) {
+    const isThresholdBoard = (count === FREE_BOARDS_LIMIT)
+    const success = await showRealAd(isThresholdBoard)
     if (!success) return
   }
 
