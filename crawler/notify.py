@@ -44,28 +44,18 @@ def miniapp_button(label: str, action: str = None) -> dict:
     return {"text": label, "web_app": {"url": url}}
 
 
-def url_button(label: str, url: str) -> dict:
-    return {"text": label, "url": url}
-
-
 # ── Notification senders ──────────────────────────────────────────────────────
 
 async def send_full_notification(
     client: httpx.AsyncClient,
     n: dict,
-    show_extend: bool = False,
 ) -> None:
-    text = f"📋 <b>{html.escape(n['board'])}</b> 新文章\n\n標題：{html.escape(n['article_title'] or '')}"
-
+    title = html.escape(n['article_title'] or '')
     article_url = n.get("article_url") or ""
-    row = []
+    text = f"📋 <b>{html.escape(n['board'])}</b> 新文章\n\n{title}"
     if article_url:
-        row.append(url_button("閱讀全文", article_url))
-    if show_extend:
-        row.append(miniapp_button("🎬 延長解鎖", "unlock"))
-
-    keyboard = [row] if row else []
-    await send_message(client, n["user_id"], text, keyboard)
+        text += f"\n{article_url}"
+    await send_message(client, n["user_id"], text, [])
 
 
 async def send_hidden_notification(client: httpx.AsyncClient, n: dict) -> None:
@@ -117,10 +107,8 @@ async def main() -> None:
 
                 try:
                     # 1. 決定發送哪種通知
-                    if board_rank <= FREE_BOARDS_LIMIT:
+                    if board_rank <= FREE_BOARDS_LIMIT or is_unlocked:
                         await send_full_notification(client, n)
-                    elif is_unlocked:
-                        await send_full_notification(client, n, show_extend=True)
                     else:
                         await send_hidden_notification(client, n)
                     
