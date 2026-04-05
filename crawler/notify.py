@@ -2,6 +2,7 @@
 """PTT notification dispatcher — sends Telegram messages for pending notifications."""
 
 import asyncio
+import html
 import os
 import time
 
@@ -49,7 +50,7 @@ async def send_full_notification(
     n: dict,
     show_extend: bool = False,
 ) -> None:
-    text = f"📋 <b>{n['board']}</b> 新文章\n\n標題：{n['article_title']}"
+    text = f"📋 <b>{html.escape(n['board'])}</b> 新文章\n\n標題：{html.escape(n['article_title'] or '')}"
     read_btn = url_button("閱讀全文", n["article_url"])
 
     if show_extend:
@@ -61,7 +62,7 @@ async def send_full_notification(
 
 
 async def send_hidden_notification(client: httpx.AsyncClient, n: dict) -> None:
-    text = f"📋 <b>{n['board']}</b> 有新文章\n\n觀看廣告查看標題及連結"
+    text = f"📋 <b>{html.escape(n['board'])}</b> 有新文章\n\n觀看廣告查看標題及連結"
     keyboard = [[miniapp_button("🎬 解鎖 24 小時完整通知", "unlock")]]
     await send_message(client, n["user_id"], text, keyboard)
 
