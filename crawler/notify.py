@@ -122,9 +122,9 @@ async def send_expiry_notice(
     affected_str = format_affected_str(affected_boards)
     free_str = "、".join(free_boards) if free_boards else f"前 {FREE_BOARDS_LIMIT} 個訂閱看板"
     text = (
-        f"⏰ <b>完整通知功能已到期</b>\n\n"
+        f"⏰ <b>完整通知功能已到期</b>\n"
         f"{html.escape(affected_str)}已無法收到完整通知\n"
-        f"{html.escape(free_str)} 訂閱不受影響\n\n"
+        f"{html.escape(free_str)} 訂閱不受影響\n"
         f"觀看廣告啟用完整通知功能 24 小時。"
     )
     keyboard = [[miniapp_button("🎬 解鎖完整通知功能", "unlock")]]
