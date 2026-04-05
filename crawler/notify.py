@@ -95,7 +95,7 @@ async def send_full_notification(
     article_url = n.get("article_url") or ""
     pub_time = format_article_time(n.get("article_id", ""))
 
-    text = f"📋 <b>{html.escape(n['board'])}</b> 新文章\n\n{title}"
+    text = f"📋 <b>{html.escape(n['board'])}</b> 新文章\n{title}"
     if pub_time:
         text += f"\n🕐 {pub_time}"
     if article_url:
