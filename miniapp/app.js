@@ -207,8 +207,10 @@ document.getElementById('board-search').addEventListener('input', e => {
 })
 
 // ── Ad modal logic ──────────────────────────────────────────────────────────
-async function showRealAd(shouldResetTimer = true) {
-  const confirmed = await showMockAd(true) // 預備模式
+// context: { type: 'add-board', board: string } | { type: 'unlock' }
+
+async function showRealAd(shouldResetTimer = true, context = { type: 'unlock' }) {
+  const confirmed = await showMockAd(true, shouldResetTimer, context) // 預備模式
   if (!confirmed) return false
 
   // 使用者點選確定後，先關閉確認視窗
@@ -219,8 +221,11 @@ async function showRealAd(shouldResetTimer = true) {
       show_10832818().then(async () => {
         try {
           const adResult = await apiFetch(`/api/ad/complete?reset=${shouldResetTimer}`, { method: 'POST' })
-          userState = { ...userState, is_unlocked: shouldResetTimer, ad_unlocked_at: adResult.ad_unlocked_at }
-          showToast(shouldResetTimer ? '🎉 24 小時權限已解鎖！' : '✅ 已完成新增門票')
+          if (shouldResetTimer) {
+            // 首次從 locked → unlocked，更新本機解鎖狀態與到期時間
+            userState = { ...userState, is_unlocked: true, ad_unlocked_at: adResult.ad_unlocked_at }
+          }
+          // shouldResetTimer=false：已在 24h 解鎖期內追加看板，本機 userState 不動
           resolve(true)
         } catch {
           showToast('解鎖失敗，請稍後再試')
@@ -229,27 +234,43 @@ async function showRealAd(shouldResetTimer = true) {
       })
     } else {
       console.warn('Monetag not ready, starting countdown fallback')
-      showMockAd(false, shouldResetTimer).then(resolve)
+      showMockAd(false, shouldResetTimer, context).then(resolve)
     }
   })
 }
 
-function showMockAd(isPreCheck = false, shouldResetTimer = true) {
+function showMockAd(isPreCheck = false, shouldResetTimer = true, context = { type: 'unlock' }) {
   return new Promise((resolve) => {
-    const modal = document.getElementById('modal-ad-mock')
-    const timer = document.getElementById('ad-countdown')
+    const modal    = document.getElementById('modal-ad-mock')
+    const timer    = document.getElementById('ad-countdown')
     const closeBtn = document.getElementById('ad-close-btn')
     const cancelBtn = document.getElementById('ad-cancel-btn')
-    const label = modal.querySelector('.ad-label')
-    
+    const label    = modal.querySelector('.ad-label')
+    const adIcon   = modal.querySelector('.ad-icon')
+    const adTitle  = modal.querySelector('.ad-title')
+    const adDesc   = modal.querySelector('.ad-body p')
+
+    // 依情境設定彈窗內容
+    const isAddBoard = context.type === 'add-board'
+    if (isAddBoard) {
+      adIcon.textContent  = '📋'
+      adTitle.textContent = `新增 ${context.board}`
+      adDesc.innerHTML    = '超過免費上限的看板<br>需觀看廣告才能訂閱'
+    } else {
+      adIcon.textContent  = '🔔'
+      adTitle.textContent = '解鎖 24 小時完整通知'
+      adDesc.innerHTML    = '觀看廣告後，第 3 個以後的看板<br>將在 24 小時內發送完整通知'
+    }
+
     modal.classList.remove('hidden')
 
     if (isPreCheck) {
       timer.classList.add('hidden')
       closeBtn.classList.remove('hidden')
-      closeBtn.textContent = '確定，觀看廣告並解鎖'
-      label.textContent = '進階功能確認'
-      
+      closeBtn.disabled = false
+      closeBtn.textContent = isAddBoard ? '觀看廣告並新增' : '觀看廣告並解鎖'
+      label.textContent    = isAddBoard ? `新增 ${context.board}` : '解鎖 24 小時完整通知'
+
       closeBtn.onclick = () => {
         closeBtn.classList.add('hidden')
         resolve(true)
@@ -266,8 +287,9 @@ function showMockAd(isPreCheck = false, shouldResetTimer = true) {
     timer.classList.remove('hidden')
     timer.textContent = count
     closeBtn.classList.add('hidden')
+    closeBtn.disabled = false
     closeBtn.textContent = '關閉廣告並完成'
-    
+
     const interval = setInterval(() => {
       count--
       timer.textContent = count
@@ -277,15 +299,25 @@ function showMockAd(isPreCheck = false, shouldResetTimer = true) {
         closeBtn.classList.remove('hidden')
       }
     }, 1000)
-    
+
     closeBtn.onclick = async () => {
+      closeBtn.disabled = true
+      closeBtn.textContent = '處理中…'
+      cancelBtn.disabled = true
       try {
         const adResult = await apiFetch(`/api/ad/complete?reset=${shouldResetTimer}`, { method: 'POST' })
-        userState = { ...userState, is_unlocked: shouldResetTimer, ad_unlocked_at: adResult.ad_unlocked_at }
+        if (shouldResetTimer) {
+          // 首次從 locked → unlocked，更新本機解鎖狀態與到期時間
+          userState = { ...userState, is_unlocked: true, ad_unlocked_at: adResult.ad_unlocked_at }
+        }
+        // shouldResetTimer=false：已在 24h 解鎖期內追加看板，本機 userState 不動
         modal.classList.add('hidden')
         resolve(true)
       } catch {
         showToast('解鎖失敗，請稍後再試')
+        closeBtn.disabled = false
+        closeBtn.textContent = '關閉廣告並完成'
+        cancelBtn.disabled = false
         modal.classList.add('hidden')
         resolve(false)
       }
@@ -304,8 +336,9 @@ async function handleAddBoard(board) {
 
   // 超過免費額度（例如 >= 2）則跳廣告
   if (count >= FREE_BOARDS_LIMIT) {
-    const isThresholdBoard = (count === FREE_BOARDS_LIMIT)
-    const success = await showRealAd(isThresholdBoard)
+    // 未解鎖時才需重置 24h 計時器；已解鎖期間追加看板不重置到期時間
+    const shouldResetTimer = !userState?.is_unlocked
+    const success = await showRealAd(shouldResetTimer, { type: 'add-board', board })
     if (!success) return
   }
 
@@ -369,7 +402,7 @@ async function boot() {
   if (params.get('action') === 'unlock') {
     // 延遲一下下確保 UI 載入完成
     setTimeout(async () => {
-      const success = await showRealAd(true)
+      const success = await showRealAd(true, { type: 'unlock' })
       if (success) {
         // 解鎖成功後清空網址參數，避免 reload 時重複觸發
         window.history.replaceState({}, document.title, window.location.pathname)
