@@ -219,8 +219,12 @@ async function showRealAd(shouldResetTimer = true) {
       show_10832818().then(async () => {
         try {
           const adResult = await apiFetch(`/api/ad/complete?reset=${shouldResetTimer}`, { method: 'POST' })
-          userState = { ...userState, is_unlocked: shouldResetTimer, ad_unlocked_at: adResult.ad_unlocked_at }
-          showToast(shouldResetTimer ? '🎉 24 小時權限已解鎖！' : '✅ 已完成新增門票')
+          if (shouldResetTimer) {
+            // 首次從 locked → unlocked，更新本機解鎖狀態與到期時間
+            userState = { ...userState, is_unlocked: true, ad_unlocked_at: adResult.ad_unlocked_at }
+            showToast('🎉 24 小時權限已解鎖！')
+          }
+          // shouldResetTimer=false：已在 24h 解鎖期內追加看板，本機 userState 不動
           resolve(true)
         } catch {
           showToast('解鎖失敗，請稍後再試')
@@ -281,7 +285,12 @@ function showMockAd(isPreCheck = false, shouldResetTimer = true) {
     closeBtn.onclick = async () => {
       try {
         const adResult = await apiFetch(`/api/ad/complete?reset=${shouldResetTimer}`, { method: 'POST' })
-        userState = { ...userState, is_unlocked: shouldResetTimer, ad_unlocked_at: adResult.ad_unlocked_at }
+        if (shouldResetTimer) {
+          // 首次從 locked → unlocked，更新本機解鎖狀態與到期時間
+          userState = { ...userState, is_unlocked: true, ad_unlocked_at: adResult.ad_unlocked_at }
+          showToast('🎉 24 小時權限已解鎖！')
+        }
+        // shouldResetTimer=false：已在 24h 解鎖期內追加看板，本機 userState 不動
         modal.classList.add('hidden')
         resolve(true)
       } catch {
