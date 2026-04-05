@@ -1,8 +1,16 @@
 /* globals Telegram */
 'use strict'
 
-const API_BASE = 'https://ptt-notify-bot-api.ming780922.workers.dev'
+const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+  ? 'https://ptt-notify-bot-api.ming780922.workers.dev' // 你也可以改成 http://localhost:8787 連向本地 API
+  : 'https://ptt-notify-bot-api.ming780922.workers.dev'
 const FREE_BOARDS_LIMIT = 2
+
+// ── Mock Telegram for local dev ──────────────────────────────────────────────
+if (!window.Telegram.WebApp.initData) {
+  console.log('🛠️ Running in Local Debug Mode')
+  window.Telegram.WebApp.initData = 'user=%7B%22id%22%3A12345678%2C%22first_name%22%3A%22Local%22%2C%22last_name%22%3A%22Dev%22%2C%22username%22%3A%22local_dev%22%2C%22language_code%22%3A%22en%22%7D&hash=debug_mode'
+}
 
 const tg = window.Telegram.WebApp
 tg.ready()

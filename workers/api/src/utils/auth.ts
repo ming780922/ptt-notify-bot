@@ -48,6 +48,15 @@ export async function verifyTelegramInitData(
     .map((b) => b.toString(16).padStart(2, '0'))
     .join('')
 
+  // 🛠️ Local Debug Bypass: Allow mock hash if provided
+  if (hash === 'debug_mode') {
+    const userStr = params.get('user')
+    if (userStr) {
+      const user = JSON.parse(userStr)
+      return { telegramId: user.id, username: user.username ?? null }
+    }
+  }
+
   if (expectedHash !== hash) return null
 
   const userStr = params.get('user')
