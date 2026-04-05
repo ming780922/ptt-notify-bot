@@ -11,7 +11,10 @@ import httpx
 API_WORKER_URL = os.environ["API_WORKER_URL"].rstrip("/")
 INTERNAL_SECRET = os.environ["INTERNAL_SECRET"]
 TELEGRAM_BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
-MINIAPP_URL = os.environ["MINIAPP_URL"]
+MINIAPP_URL = os.environ["MINIAPP_URL"].rstrip("/")
+
+if not MINIAPP_URL.startswith("https://"):
+    raise ValueError(f"MINIAPP_URL must be an https URL, got: {MINIAPP_URL!r}")
 
 FREE_BOARDS_LIMIT = 2
 
