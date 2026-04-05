@@ -31,8 +31,11 @@ async def send_message(client: httpx.AsyncClient, chat_id: int, text: str, keybo
     resp.raise_for_status()
 
 
-def miniapp_button(label: str) -> dict:
-    return {"text": label, "web_app": {"url": MINIAPP_URL}}
+def miniapp_button(label: str, action: str = None) -> dict:
+    url = MINIAPP_URL
+    if action:
+        url += f"?action={action}"
+    return {"text": label, "web_app": {"url": url}}
 
 
 def url_button(label: str, url: str) -> dict:
@@ -50,7 +53,7 @@ async def send_full_notification(
     read_btn = url_button("閱讀全文", n["article_url"])
 
     if show_extend:
-        row = [read_btn, miniapp_button("🎬 延長解鎖")]
+        row = [read_btn, miniapp_button("🎬 延長解鎖", "unlock")]
     else:
         row = [read_btn]
 
@@ -59,14 +62,14 @@ async def send_full_notification(
 
 async def send_hidden_notification(client: httpx.AsyncClient, n: dict) -> None:
     text = f"📋 <b>{n['board']}</b> 有新文章\n\n觀看廣告查看標題及連結"
-    keyboard = [[miniapp_button("🎬 解鎖 24 小時完整通知")]]
+    keyboard = [[miniapp_button("🎬 解鎖 24 小時完整通知", "unlock")]]
     await send_message(client, n["user_id"], text, keyboard)
 
 
 async def send_expiry_notice(client: httpx.AsyncClient, n: dict) -> None:
     # 這裡未來可以改進為查詢該使用者的所有看板名稱，目前先以簡單文字表示
     text = "⏰ <b>進階通知已到期</b>\n\n第 3 個以後看板的完整通知已停止\n請觀看廣告以解鎖 24 小時完整通知。"
-    keyboard = [[miniapp_button("🎬 立即解鎖")]]
+    keyboard = [[miniapp_button("🎬 立即解鎖", "unlock")]]
     await send_message(client, n["user_id"], text, keyboard)
 
 

@@ -363,6 +363,20 @@ document.getElementById('confirm-ok').addEventListener('click', async () => {
 // ── Boot ──────────────────────────────────────────────────────────────────────
 async function boot() {
   await Promise.all([loadUser(), loadSubscriptions()])
+
+  // 檢查是否有自動指令 (例如從 Telegram 到期通知點擊而來)
+  const params = new URLSearchParams(window.location.search)
+  if (params.get('action') === 'unlock') {
+    // 延遲一下下確保 UI 載入完成
+    setTimeout(async () => {
+      const success = await showRealAd(true)
+      if (success) {
+        // 解鎖成功後清空網址參數，避免 reload 時重複觸發
+        window.history.replaceState({}, document.title, window.location.pathname)
+        renderSubscriptions()
+      }
+    }, 500)
+  }
 }
 
 boot()
