@@ -4,10 +4,9 @@ import { createBot } from './bot'
 import {
   getActiveBoardsWithSubscribers,
   enqueueCrawlBoards,
-  fetchPendingNotifications,
   cleanupOldNotifications,
 } from './db/queries'
-import { dispatchCrawler, dispatchNotifier, getActiveCrawlRunCount, dispatchNotifications } from './utils/dispatch'
+import { dispatchCrawler, dispatchNotifier, getActiveCrawlRunCount } from './utils/dispatch'
 import { CONFIG } from '../../shared/config'
 
 // ─── Cron identifiers ─────────────────────────────────────────────────────────
@@ -85,20 +84,15 @@ async function redispatchStalePendingJobs(env: Env): Promise<void> {
   }
 }
 
-// ─── Cron: 2-57/5 — send pending notifications ───────────────────────────────
+// ─── Cron: 2-57/5 — dispatch notifier & cleanup ──────────────────────────────
 
 async function runNotifyCron(env: Env): Promise<void> {
-  console.log('[cron:notify] Start: Checking for pending notifications')
+  console.log('[cron:notify] Start: Dispatching notifier via GitHub Actions')
   try {
     await dispatchNotifier(env)
+    console.log('[cron:notify] Dispatched notifier (GitHub Action)')
   } catch (err) {
     console.error('[cron:notify] dispatchNotifier failed:', err)
-  }
-
-  const notifications = await fetchPendingNotifications(env.DB, CONFIG.NOTIFICATION_BATCH_SIZE)
-  if (notifications.length > 0) {
-    console.log(`[cron:notify] Found ${notifications.length} pending notifications, sending...`)
-    await dispatchNotifications(env.DB, notifications, env.BOT_TOKEN)
   }
   await cleanupOldNotifications(env.DB, CONFIG.CLEANUP_DAYS)
 }
