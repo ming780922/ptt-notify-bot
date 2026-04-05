@@ -222,7 +222,6 @@ async function showRealAd(shouldResetTimer = true) {
           if (shouldResetTimer) {
             // 首次從 locked → unlocked，更新本機解鎖狀態與到期時間
             userState = { ...userState, is_unlocked: true, ad_unlocked_at: adResult.ad_unlocked_at }
-            showToast('🎉 24 小時權限已解鎖！')
           }
           // shouldResetTimer=false：已在 24h 解鎖期內追加看板，本機 userState 不動
           resolve(true)
@@ -283,18 +282,23 @@ function showMockAd(isPreCheck = false, shouldResetTimer = true) {
     }, 1000)
     
     closeBtn.onclick = async () => {
+      closeBtn.disabled = true
+      closeBtn.textContent = '處理中…'
+      cancelBtn.disabled = true
       try {
         const adResult = await apiFetch(`/api/ad/complete?reset=${shouldResetTimer}`, { method: 'POST' })
         if (shouldResetTimer) {
           // 首次從 locked → unlocked，更新本機解鎖狀態與到期時間
           userState = { ...userState, is_unlocked: true, ad_unlocked_at: adResult.ad_unlocked_at }
-          showToast('🎉 24 小時權限已解鎖！')
         }
         // shouldResetTimer=false：已在 24h 解鎖期內追加看板，本機 userState 不動
         modal.classList.add('hidden')
         resolve(true)
       } catch {
         showToast('解鎖失敗，請稍後再試')
+        closeBtn.disabled = false
+        closeBtn.textContent = '關閉廣告並完成'
+        cancelBtn.disabled = false
         modal.classList.add('hidden')
         resolve(false)
       }
