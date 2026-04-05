@@ -2,8 +2,10 @@
 """PTT notification dispatcher — sends Telegram messages for pending notifications."""
 
 import asyncio
+import datetime
 import html
 import os
+import re
 import time
 
 import httpx
@@ -37,6 +39,17 @@ async def send_message(client: httpx.AsyncClient, chat_id: int, text: str, keybo
     resp.raise_for_status()
 
 
+TW_TZ = datetime.timezone(datetime.timedelta(hours=8))
+
+def format_article_time(article_id: str) -> str:
+    """從 article_id (M.{unix_ts}.A.xxx) 提取並格式化台灣時間"""
+    m = re.match(r"M\.(\d+)\.", article_id or "")
+    if not m:
+        return ""
+    dt = datetime.datetime.fromtimestamp(int(m.group(1)), tz=TW_TZ)
+    return dt.strftime("%m/%d %H:%M")
+
+
 def miniapp_button(label: str, action: str = None) -> dict:
     url = MINIAPP_URL
     if action:
@@ -52,7 +65,11 @@ async def send_full_notification(
 ) -> None:
     title = html.escape(n['article_title'] or '')
     article_url = n.get("article_url") or ""
+    pub_time = format_article_time(n.get("article_id", ""))
+
     text = f"📋 <b>{html.escape(n['board'])}</b> 新文章\n\n{title}"
+    if pub_time:
+        text += f"\n🕐 {pub_time}"
     if article_url:
         text += f"\n{article_url}"
     await send_message(client, n["user_id"], text, [])

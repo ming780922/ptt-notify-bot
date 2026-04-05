@@ -255,11 +255,11 @@ function showMockAd(isPreCheck = false, shouldResetTimer = true, context = { typ
     if (isAddBoard) {
       adIcon.textContent  = '📋'
       adTitle.textContent = `新增 ${context.board}`
-      adDesc.innerHTML    = '超過免費上限的看板<br>需觀看廣告才能訂閱'
+      adDesc.innerHTML    = '超過免費上限的看板需觀看廣告才能訂閱<br><br>① 等倒數結束 → 點 ✕ 關閉<br>② 或點擊廣告 → 立即完成，返回 Bot 即可'
     } else {
       adIcon.textContent  = '🔔'
       adTitle.textContent = '解鎖 24 小時完整通知'
-      adDesc.innerHTML    = '觀看廣告後，第 3 個以後的看板<br>將在 24 小時內發送完整通知'
+      adDesc.innerHTML    = '觀看廣告後，第 3 個以後的看板<br>將在 24 小時內發送完整通知<br><br>① 等倒數結束 → 點 ✕ 關閉<br>② 或點擊廣告 → 立即完成，返回 Bot 即可'
     }
 
     modal.classList.remove('hidden')
