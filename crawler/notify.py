@@ -29,6 +29,8 @@ async def send_message(client: httpx.AsyncClient, chat_id: int, text: str, keybo
         "reply_markup": {"inline_keyboard": keyboard},
     }
     resp = await client.post(f"{TG_API}/sendMessage", json=payload, timeout=15)
+    if not resp.is_success:
+        print(f"  [Telegram] {resp.status_code}: {resp.text}")
     resp.raise_for_status()
 
 
@@ -51,14 +53,16 @@ async def send_full_notification(
     show_extend: bool = False,
 ) -> None:
     text = f"📋 <b>{html.escape(n['board'])}</b> 新文章\n\n標題：{html.escape(n['article_title'] or '')}"
-    read_btn = url_button("閱讀全文", n["article_url"])
 
+    article_url = n.get("article_url") or ""
+    row = []
+    if article_url:
+        row.append(url_button("閱讀全文", article_url))
     if show_extend:
-        row = [read_btn, miniapp_button("🎬 延長解鎖", "unlock")]
-    else:
-        row = [read_btn]
+        row.append(miniapp_button("🎬 延長解鎖", "unlock"))
 
-    await send_message(client, n["user_id"], text, [row])
+    keyboard = [row] if row else []
+    await send_message(client, n["user_id"], text, keyboard)
 
 
 async def send_hidden_notification(client: httpx.AsyncClient, n: dict) -> None:
