@@ -94,34 +94,35 @@ async def main() -> None:
 
             print(f"Processing {len(notifications)} notification(s)…")
             updates: list[dict] = []
+            sent_expiry_this_run = False # 確保本次執行只發送一次提醒
 
             for n in notifications:
                 board_rank: int = n.get("board_rank") or 1
                 ad_unlocked_at: int = n.get("ad_unlocked_at") or 0
                 expiry_notified: int = n.get("expiry_notified") or 0
                 is_unlocked = (time.time() - ad_unlocked_at) < 86400
+                
+                print(f"  [Debug] ID: {n['id']}, Rank: {board_rank}, UnlockedAt: {ad_unlocked_at}, ExpiryNotified: {expiry_notified}, IsUnlocked: {is_unlocked}")
 
                 try:
+                    # 1. 決定發送哪種通知
                     if board_rank <= FREE_BOARDS_LIMIT:
-                        # 看板 1-2：永遠免費，完整通知
                         await send_full_notification(client, n)
-                        updates.append({"id": n["id"], "status": "sent"})
-
                     elif is_unlocked:
-                        # 看板 3+：解鎖期間，完整通知 + 延長按鈕
                         await send_full_notification(client, n, show_extend=True)
-                        updates.append({"id": n["id"], "status": "sent"})
-
                     else:
-                        # 看板 3+：未解鎖，隱藏通知
                         await send_hidden_notification(client, n)
-                        
-                        # 如果是第一次過期，加發一則到期提醒
-                        if expiry_notified == 0:
-                            await send_expiry_notice(client, n)
-                            updates.append({"id": n["id"], "status": "sent", "expiry_notified": 1})
-                        else:
-                            updates.append({"id": n["id"], "status": "sent"})
+                    
+                    # 2. 如果已過期且尚未通知過，加發到期提醒 (並檢查本次是否已發過)
+                    extra_update = {}
+                    if board_rank > FREE_BOARDS_LIMIT and not is_unlocked and expiry_notified == 0 and not sent_expiry_this_run:
+                        print("  [Action] Sending expiry notice...")
+                        await send_expiry_notice(client, n)
+                        extra_update = {"expiry_notified": 1}
+                        sent_expiry_this_run = True # 標記已發送，避免同批次重複發送
+                    
+                    # 3. 記錄狀態更新
+                    updates.append({"id": n["id"], "status": "sent", **extra_update})
 
                 except Exception as e:
                     print(f"Error sending notification {n['id']}: {e}")
