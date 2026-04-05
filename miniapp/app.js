@@ -252,14 +252,27 @@ function showMockAd(isPreCheck = false, shouldResetTimer = true, context = { typ
 
     // 依情境設定彈窗內容
     const isAddBoard = context.type === 'add-board'
+    const steps = '<div style="display:inline-block;text-align:left">① 等倒數結束 → 點 ✕ 關閉<br>② 或點擊廣告 → 立即完成，返回 Bot 即可</div>'
     if (isAddBoard) {
       adIcon.textContent  = '📋'
       adTitle.textContent = `新增 ${context.board}`
-      adDesc.innerHTML    = '超過免費上限的看板需觀看廣告才能訂閱<br><br>① 等倒數結束 → 點 ✕ 關閉<br>② 或點擊廣告 → 立即完成，返回 Bot 即可'
+      adDesc.innerHTML    = `超過免費上限的看板需觀看廣告才能訂閱<br><br>${steps}`
     } else {
+      const freeBoards = subscriptions
+        .filter(s => s.board_rank <= FREE_BOARDS_LIMIT)
+        .sort((a, b) => a.board_rank - b.board_rank)
+        .map(s => s.board)
+      const paidBoards = subscriptions
+        .filter(s => s.board_rank > FREE_BOARDS_LIMIT)
+        .sort((a, b) => a.board_rank - b.board_rank)
+        .map(s => s.board)
+      const paidStr = paidBoards.length <= 2
+        ? paidBoards.join('、')
+        : paidBoards.slice(0, 2).join('、') + ` 及 ${paidBoards.length - 2} 個看板`
+      const freeStr = freeBoards.slice(0, 2).join('、')
       adIcon.textContent  = '🔔'
-      adTitle.textContent = '解鎖 24 小時完整通知'
-      adDesc.innerHTML    = '觀看廣告後，第 3 個以後的看板<br>將在 24 小時內發送完整通知<br><br>① 等倒數結束 → 點 ✕ 關閉<br>② 或點擊廣告 → 立即完成，返回 Bot 即可'
+      adTitle.textContent = '完整通知功能已暫停'
+      adDesc.innerHTML    = `${esc(paidStr)} 完整通知已暫停<br>${esc(freeStr)} 不受影響<br><br>觀看一則廣告即可解鎖完整通知功能 24 小時<br><br>${steps}`
     }
 
     modal.classList.remove('hidden')
@@ -269,7 +282,7 @@ function showMockAd(isPreCheck = false, shouldResetTimer = true, context = { typ
       closeBtn.classList.remove('hidden')
       closeBtn.disabled = false
       closeBtn.textContent = isAddBoard ? '觀看廣告並新增' : '觀看廣告並解鎖'
-      label.textContent    = isAddBoard ? '' : '解鎖 24 小時完整通知'
+      label.textContent    = ''
 
       closeBtn.onclick = () => {
         closeBtn.classList.add('hidden')
