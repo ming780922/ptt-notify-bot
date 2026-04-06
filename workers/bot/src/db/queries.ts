@@ -487,7 +487,7 @@ export async function fetchPendingNotificationsWithUser(
       `SELECT pn.*, u.ad_unlocked_at, u.expiry_notified, COALESCE(sf.keywords, '[]') AS keywords
        FROM pending_notifications pn
        JOIN users u ON u.telegram_id = pn.user_id
-       LEFT JOIN subscriptions s ON s.user_id = pn.user_id AND s.board = pn.board
+       LEFT JOIN subscriptions s ON s.user_id = pn.user_id AND LOWER(s.board) = LOWER(pn.board)
        LEFT JOIN subscription_filters sf ON sf.subscription_id = s.id
        WHERE pn.status = 'pending'
        ORDER BY pn.created_at ASC
