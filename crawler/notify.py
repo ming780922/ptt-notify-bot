@@ -100,7 +100,7 @@ def highlight_keywords(title: str, keywords: list[str]) -> str:
     result = []
     for i, part in enumerate(parts):
         if i % 2 == 1:  # captured group = matched keyword
-            result.append(f'<b>{html.escape(part)}</b>')
+            result.append(f'<b><u>{html.escape(part)}</u></b>')
         else:
             result.append(html.escape(part))
     return ''.join(result)
