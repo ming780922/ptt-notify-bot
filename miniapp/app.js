@@ -254,12 +254,17 @@ function showMockAd(isPreCheck = false, shouldResetTimer = true, context = { typ
     const adDesc   = modal.querySelector('.ad-body p')
 
     // 依情境設定彈窗內容
-    const isAddBoard = context.type === 'add-board'
+    const isAddBoard    = context.type === 'add-board'
+    const isAddKeyword  = context.type === 'add-keyword'
     const steps = '<div style="display:inline-block;text-align:left">① 等倒數結束 → 點 ✕ 關閉<br>② 或點擊廣告 → 立即完成，返回 Bot 即可</div>'
     if (isAddBoard) {
       adIcon.textContent  = '📋'
       adTitle.textContent = `新增 ${context.board}`
       adDesc.innerHTML    = `超過免費上限的看板需觀看廣告才能訂閱<br><br>${steps}`
+    } else if (isAddKeyword) {
+      adIcon.textContent  = '🔑'
+      adTitle.textContent = '新增更多關鍵字'
+      adDesc.innerHTML    = `免費版每個看板限 ${FREE_KEYWORDS_PER_BOARD} 個關鍵字<br>觀看廣告即可在 24 小時內新增更多（最多 ${MAX_KEYWORDS_PER_BOARD} 個）<br><br>${steps}`
     } else {
       const freeBoards = subscriptions
         .filter(s => s.board_rank <= FREE_BOARDS_LIMIT)
@@ -284,7 +289,7 @@ function showMockAd(isPreCheck = false, shouldResetTimer = true, context = { typ
       timer.classList.add('hidden')
       closeBtn.classList.remove('hidden')
       closeBtn.disabled = false
-      closeBtn.textContent = isAddBoard ? '觀看廣告並新增' : '觀看廣告並解鎖'
+      closeBtn.textContent = isAddBoard || isAddKeyword ? '觀看廣告並新增' : '觀看廣告並解鎖'
       label.textContent    = ''
 
       closeBtn.onclick = () => {
@@ -418,20 +423,17 @@ function renderKeywords() {
     btn.addEventListener('click', () => removeKeyword(parseInt(btn.dataset.index)))
   })
 
-  // Show add row / lock prompt / limit reached
-  if (!unlocked && count >= FREE_KEYWORDS_PER_BOARD) {
-    addRow.classList.add('hidden')
-    limitInfo.innerHTML = `<button class="keyword-unlock-btn" id="keyword-unlock-btn">🔒 解鎖以新增更多關鍵字（最多 ${MAX_KEYWORDS_PER_BOARD} 個）</button>`
-    document.getElementById('keyword-unlock-btn').addEventListener('click', async () => {
-      const success = await showRealAd(true, { type: 'unlock' })
-      if (success) renderKeywords()
-    })
-  } else if (count >= MAX_KEYWORDS_PER_BOARD) {
+  // Show add row / limit info
+  if (count >= MAX_KEYWORDS_PER_BOARD) {
     addRow.classList.add('hidden')
     limitInfo.textContent = `已達上限（${MAX_KEYWORDS_PER_BOARD} 個）`
   } else {
     addRow.classList.remove('hidden')
-    limitInfo.textContent = count > 0 ? `${count} / ${maxKw} 個關鍵字` : ''
+    if (!unlocked && count >= FREE_KEYWORDS_PER_BOARD) {
+      limitInfo.textContent = `🔒 免費版上限 ${FREE_KEYWORDS_PER_BOARD} 個，觀看廣告可新增更多`
+    } else {
+      limitInfo.textContent = count > 0 ? `${count} / ${maxKw} 個關鍵字` : ''
+    }
   }
 }
 
@@ -440,6 +442,13 @@ async function addKeyword() {
   const kw = input.value.trim()
   if (!kw) return
   if (editingKeywords.includes(kw)) { showToast('關鍵字已存在'); return }
+
+  // 超出免費上限時先走廣告流程，成功後再繼續新增
+  const unlocked = userState?.is_unlocked ?? false
+  if (!unlocked && editingKeywords.length >= FREE_KEYWORDS_PER_BOARD) {
+    const success = await showRealAd(true, { type: 'add-keyword' })
+    if (!success) return
+  }
 
   const newKeywords = [...editingKeywords, kw]
   try {
