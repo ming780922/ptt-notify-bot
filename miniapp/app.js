@@ -409,9 +409,7 @@ function renderKeywords() {
   const limitInfo = document.getElementById('keyword-limit-info')
   if (!tagsEl) return
 
-  const unlocked  = userState?.is_unlocked ?? false
-  const maxKw     = unlocked ? MAX_KEYWORDS_PER_BOARD : FREE_KEYWORDS_PER_BOARD
-  const count     = editingKeywords.length
+  const count = editingKeywords.length
 
   // Render keyword tags
   tagsEl.innerHTML = editingKeywords.map((kw, i) => `
@@ -429,11 +427,9 @@ function renderKeywords() {
     limitInfo.textContent = `已達上限（${MAX_KEYWORDS_PER_BOARD} 個）`
   } else {
     addRow.classList.remove('hidden')
-    if (!unlocked && count >= FREE_KEYWORDS_PER_BOARD) {
-      limitInfo.textContent = `🔒 免費版上限 ${FREE_KEYWORDS_PER_BOARD} 個，觀看廣告可新增更多`
-    } else {
-      limitInfo.textContent = count > 0 ? `${count} / ${maxKw} 個關鍵字` : ''
-    }
+    limitInfo.textContent = count >= FREE_KEYWORDS_PER_BOARD
+      ? `${count} / ${MAX_KEYWORDS_PER_BOARD} 個關鍵字（新增需觀看廣告）`
+      : ''
   }
 }
 
@@ -443,10 +439,9 @@ async function addKeyword() {
   if (!kw) return
   if (editingKeywords.includes(kw)) { showToast('關鍵字已存在'); return }
 
-  // 超出免費上限時先走廣告流程，成功後再繼續新增
-  const unlocked = userState?.is_unlocked ?? false
-  if (!unlocked && editingKeywords.length >= FREE_KEYWORDS_PER_BOARD) {
-    const success = await showRealAd(true, { type: 'add-keyword' })
+  // 超出免費數量時，每個關鍵字都需觀看一則廣告（與 is_unlocked 無關）
+  if (editingKeywords.length >= FREE_KEYWORDS_PER_BOARD) {
+    const success = await showRealAd(false, { type: 'add-keyword' })
     if (!success) return
   }
 

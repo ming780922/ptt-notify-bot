@@ -268,10 +268,7 @@ async function handlePutKeywords(
     .map((k) => String(k).trim())
     .filter((k) => k.length > 0)
 
-  const user = await getUserById(env.DB, telegramId)
-  const unlocked = user ? isUnlocked(user.ad_unlocked_at) : false
-  const limit = unlocked ? CONFIG.MAX_KEYWORDS_PER_BOARD : CONFIG.FREE_KEYWORDS_PER_BOARD
-  if (keywords.length > limit) return error('AD_REQUIRED', 402)
+  if (keywords.length > CONFIG.MAX_KEYWORDS_PER_BOARD) return error('Too many keywords', 400)
 
   const sub = await getSubscriptionByUserAndBoard(env.DB, telegramId, board)
   if (!sub) return error('Subscription not found', 404)
