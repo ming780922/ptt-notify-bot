@@ -119,6 +119,7 @@ npx wrangler secret put GH_TOKEN           # GitHub PAT（actions:write）
 npx wrangler secret put GH_REPO            # owner/repo
 npx wrangler secret put MINIAPP_URL        # https://your-miniapp.pages.dev
 npx wrangler secret put INTERNAL_SECRET    # openssl rand -hex 32
+npx wrangler secret put ADMIN_TELEGRAM_ID  # 管理員 Telegram User ID（可用 @userinfobot 取得）
 ```
 
 ### API Worker
@@ -178,6 +179,16 @@ npx wrangler pages deploy . --project-name ptt-miniapp
 | `TELEGRAM_BOT_TOKEN` | Telegram Bot Token |
 | `MINIAPP_URL` | Mini App URL |
 | `CLOUDFLARE_API_TOKEN` | 用於 wrangler deploy（deploy-bot/api workflow 使用） |
+
+## BotFather 指令清單設定（人工操作）
+
+部署後到 [@BotFather](https://t.me/BotFather) 設定指令清單：
+
+```
+/setcommands → 選擇 @pttbell_bot → 輸入：
+start - 開啟管理介面
+feedback - 提供意見回饋
+```
 
 ## 第一版已知限制
 

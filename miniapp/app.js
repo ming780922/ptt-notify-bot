@@ -406,6 +406,15 @@ document.getElementById('confirm-ok').addEventListener('click', async () => {
   }
 })
 
+// ── Feedback ──────────────────────────────────────────────────────────────────
+document.getElementById('feedback-btn').addEventListener('click', () => {
+  tg.showPopup({
+    title: '意見回饋',
+    message: '關閉後請在對話框輸入 /feedback 加上你的建議',
+    buttons: [{ type: 'close', text: '知道了' }],
+  }, () => tg.close())
+})
+
 // ── Boot ──────────────────────────────────────────────────────────────────────
 async function boot() {
   await Promise.all([loadUser(), loadSubscriptions()])
