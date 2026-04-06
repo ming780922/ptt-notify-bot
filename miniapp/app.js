@@ -260,11 +260,11 @@ function showMockAd(isPreCheck = false, shouldResetTimer = true, context = { typ
     if (isAddBoard) {
       adIcon.textContent  = '📋'
       adTitle.textContent = `新增 ${context.board}`
-      adDesc.innerHTML    = `超過免費上限的看板需觀看廣告才能訂閱<br><br>${steps}`
+      adDesc.innerHTML    = `超過免費上限的看板需觀看廣告才能完成訂閱<br><br>${steps}`
     } else if (isAddKeyword) {
       adIcon.textContent  = '🔑'
-      adTitle.textContent = '新增更多關鍵字'
-      adDesc.innerHTML    = `免費版每個看板限 ${FREE_KEYWORDS_PER_BOARD} 個關鍵字<br>觀看廣告即可在 24 小時內新增更多（最多 ${MAX_KEYWORDS_PER_BOARD} 個）<br><br>${steps}`
+      adTitle.textContent = '新增關鍵字'
+      adDesc.innerHTML    = `每個看板限 ${FREE_KEYWORDS_PER_BOARD} 個關鍵字<br>觀看廣告即可新增更多<br><br>${steps}`
     } else {
       const freeBoards = subscriptions
         .filter(s => s.board_rank <= FREE_BOARDS_LIMIT)
