@@ -5,4 +5,5 @@ export interface Env {
   GH_REPO: string       // format: owner/repo
   MINIAPP_URL: string
   INTERNAL_SECRET: string
+  ADMIN_TELEGRAM_ID: string
 }

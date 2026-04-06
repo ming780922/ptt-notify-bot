@@ -12,6 +12,9 @@ database_name = "ptt-notify-bot-db"
 # 執行 `wrangler d1 create ptt-notify-bot-db` 取得，或查看 Cloudflare Dashboard → D1
 database_id = "4f64d28c-2797-41c6-93ce-15beb5533e67"
 
+[vars]
+ADMIN_TELEGRAM_ID = ""   # 部署後填入或使用 wrangler secret put ADMIN_TELEGRAM_ID
+
 [triggers]
 # */5：enqueue boards + dispatch crawler
 # 2-57/5：dispatch notifier + send pending notifications
