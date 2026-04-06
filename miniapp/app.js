@@ -264,7 +264,7 @@ function showMockAd(isPreCheck = false, shouldResetTimer = true, context = { typ
     } else if (isAddKeyword) {
       adIcon.textContent  = '🔑'
       adTitle.textContent = '新增關鍵字'
-      adDesc.innerHTML    = `每個看板限 ${FREE_KEYWORDS_PER_BOARD} 個關鍵字<br>觀看廣告即可新增更多<br><br>${steps}`
+      adDesc.innerHTML    = `每個看板免費新增${FREE_KEYWORDS_PER_BOARD}個關鍵字<br>觀看廣告新增更多<br><br>${steps}`
     } else {
       const freeBoards = subscriptions
         .filter(s => s.board_rank <= FREE_BOARDS_LIMIT)

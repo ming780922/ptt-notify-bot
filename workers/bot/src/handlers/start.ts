@@ -12,7 +12,7 @@ export async function handleStart(ctx: Context, env: Env): Promise<void> {
   const keyboard = new InlineKeyboard().webApp('📋 管理訂閱', env.MINIAPP_URL)
 
   await ctx.reply(
-    '🐧 PTT 通知 Bot\n' +
+    'PTT通知機器人\n' +
     '訂閱看板，有新文章時會主動通知你。\n' +
     '點擊下方按鈕開啟管理介面\n\n' +
     '💬 有任何建議？輸入 /feedback 告訴我們',
