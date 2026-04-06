@@ -91,6 +91,7 @@ export async function getActiveBoardsWithSubscribers(db: D1Database): Promise<Ac
       user_id: row.user_id,
       chat_id: row.chat_id,
       board_rank: row.board_rank,
+      keywords: [],
     })
   }
   return Array.from(map.values())
@@ -226,9 +227,10 @@ export async function fetchNextPendingCrawlBoard(db: D1Database): Promise<Active
   const result = await db
     .prepare(
       `SELECT
-         u.telegram_id  AS user_id,
-         u.telegram_id  AS chat_id,
-         sub_rank.rank  AS board_rank
+         u.telegram_id               AS user_id,
+         u.telegram_id               AS chat_id,
+         sub_rank.rank               AS board_rank,
+         COALESCE(sf.keywords, '[]') AS keywords_json
        FROM subscriptions s
        JOIN users u ON u.telegram_id = s.user_id
        JOIN (
@@ -236,15 +238,21 @@ export async function fetchNextPendingCrawlBoard(db: D1Database): Promise<Active
                 ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY created_at ASC) AS rank
          FROM subscriptions
        ) sub_rank ON sub_rank.id = s.id
+       LEFT JOIN subscription_filters sf ON sf.subscription_id = s.id
        WHERE s.board = ?`
     )
     .bind(job.board)
-    .all<{ user_id: number; chat_id: number; board_rank: number }>()
+    .all<{ user_id: number; chat_id: number; board_rank: number; keywords_json: string }>()
 
   return {
     board: job.board,
     last_article_id: snapshot?.last_article_id ?? null,
-    subscribers: result.results,
+    subscribers: result.results.map((row) => ({
+      user_id: row.user_id,
+      chat_id: row.chat_id,
+      board_rank: row.board_rank,
+      keywords: parseKeywords(row.keywords_json),
+    })),
   }
 }
 
@@ -428,6 +436,37 @@ export async function createSubscriptionFilter(db: D1Database, subscriptionId: n
     .prepare('INSERT OR IGNORE INTO subscription_filters (subscription_id) VALUES (?)')
     .bind(subscriptionId)
     .run()
+}
+
+export async function getSubscriptionFilter(db: D1Database, subscriptionId: number): Promise<string[]> {
+  const row = await db
+    .prepare('SELECT keywords FROM subscription_filters WHERE subscription_id = ?')
+    .bind(subscriptionId)
+    .first<{ keywords: string }>()
+  return parseKeywords(row?.keywords ?? '[]')
+}
+
+export async function updateSubscriptionFilter(
+  db: D1Database,
+  subscriptionId: number,
+  keywords: string[]
+): Promise<void> {
+  await db
+    .prepare(
+      `INSERT INTO subscription_filters (subscription_id, keywords) VALUES (?, ?)
+       ON CONFLICT(subscription_id) DO UPDATE SET keywords = excluded.keywords`
+    )
+    .bind(subscriptionId, JSON.stringify(keywords))
+    .run()
+}
+
+function parseKeywords(json: string): string[] {
+  try {
+    const parsed = JSON.parse(json)
+    return Array.isArray(parsed) ? parsed.filter((k) => typeof k === 'string') : []
+  } catch {
+    return []
+  }
 }
 
 // ─── pending_notifications (additional) ──────────────────────────────────────

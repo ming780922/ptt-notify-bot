@@ -7,6 +7,8 @@ export {
   deleteSubscription,
   getSubscriptionByUserAndBoard,
   createSubscriptionFilter,
+  getSubscriptionFilter,
+  updateSubscriptionFilter,
   getPopularBoards,
   searchBoards,
   upsertBoard,

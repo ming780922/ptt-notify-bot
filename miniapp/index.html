@@ -46,7 +46,16 @@
         <button class="modal-close" data-close="modal-edit">✕</button>
       </div>
       <div class="modal-body">
-        <p class="keyword-placeholder">🔧 關鍵字過濾功能即將推出</p>
+        <div class="keyword-section">
+          <p class="section-label">關鍵字過濾 <span class="keyword-hint">（空白＝接收全部文章）</span></p>
+          <div id="keyword-tags" class="keyword-tags"></div>
+          <div id="keyword-add-row" class="keyword-add-row">
+            <input id="keyword-input" class="keyword-input" type="text"
+                   placeholder="輸入關鍵字…" maxlength="20" autocomplete="off" />
+            <button id="keyword-add-btn" class="keyword-add-btn">＋</button>
+          </div>
+          <p id="keyword-limit-info" class="keyword-limit-info"></p>
+        </div>
         <button id="delete-btn" class="delete-btn">刪除訂閱</button>
       </div>
     </div>
@@ -89,6 +98,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=4"></script>
+  <script src="app.js?v=5"></script>
 </body>
 </html>

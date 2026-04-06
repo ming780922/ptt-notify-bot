@@ -148,15 +148,20 @@ async def main() -> None:
                     )
 
                 if new_articles and subscribers:
-                    notifications = [
-                        {
-                            "user_id": sub["user_id"], "board": board,
-                            "article_id": article["id"], "article_title": article["title"],
-                            "article_url": article["url"], "article_replies": article["replies"],
-                            "board_rank": sub["board_rank"],
-                        }
-                        for sub in subscribers for article in new_articles
-                    ]
+                    notifications = []
+                    for sub in subscribers:
+                        keywords = sub.get("keywords") or []
+                        for article in new_articles:
+                            if keywords and not any(
+                                kw.lower() in article["title"].lower() for kw in keywords
+                            ):
+                                continue
+                            notifications.append({
+                                "user_id": sub["user_id"], "board": board,
+                                "article_id": article["id"], "article_title": article["title"],
+                                "article_url": article["url"], "article_replies": article["replies"],
+                                "board_rank": sub["board_rank"],
+                            })
                     for i in range(0, len(notifications), 50):
                         batch = notifications[i:i+50]
                         await client.post(

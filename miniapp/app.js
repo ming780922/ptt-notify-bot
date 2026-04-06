@@ -5,6 +5,8 @@ const API_BASE = window.location.hostname === 'localhost' || window.location.hos
   ? 'https://ptt-notify-bot-api.ming780922.workers.dev' // 你也可以改成 http://localhost:8787 連向本地 API
   : 'https://ptt-notify-bot-api.ming780922.workers.dev'
 const FREE_BOARDS_LIMIT = 2
+const FREE_KEYWORDS_PER_BOARD = 1
+const MAX_KEYWORDS_PER_BOARD = 5
 
 // ── Mock Telegram for local dev ──────────────────────────────────────────────
 if (!window.Telegram.WebApp.initData) {
@@ -22,6 +24,7 @@ let subscriptions = []      // SubscriptionWithRank[]
 let popularBoards = []      // Board[]
 let editingBoard = null     // board name string
 let searchTimer = null
+let editingKeywords = []         // string[] for the board currently open in edit modal
 
 // ── API ──────────────────────────────────────────────────────────────────────
 async function apiFetch(path, options = {}) {
@@ -377,9 +380,100 @@ async function handleAddBoard(board) {
 // ── Edit board modal ──────────────────────────────────────────────────────────
 function openEditModal(board) {
   editingBoard = board
+  editingKeywords = []
   document.getElementById('edit-board-name').textContent = board
+  document.getElementById('keyword-input').value = ''
+  renderKeywords()
   openModal('modal-edit')
+  loadKeywords(board)
 }
+
+async function loadKeywords(board) {
+  try {
+    const data = await apiFetch(`/api/subscriptions/${encodeURIComponent(board)}/keywords`)
+    editingKeywords = data.keywords || []
+  } catch {
+    editingKeywords = []
+  }
+  renderKeywords()
+}
+
+function renderKeywords() {
+  const tagsEl    = document.getElementById('keyword-tags')
+  const addRow    = document.getElementById('keyword-add-row')
+  const limitInfo = document.getElementById('keyword-limit-info')
+  if (!tagsEl) return
+
+  const unlocked  = userState?.is_unlocked ?? false
+  const maxKw     = unlocked ? MAX_KEYWORDS_PER_BOARD : FREE_KEYWORDS_PER_BOARD
+  const count     = editingKeywords.length
+
+  // Render keyword tags
+  tagsEl.innerHTML = editingKeywords.map((kw, i) => `
+    <span class="keyword-tag">
+      ${esc(kw)}<button class="keyword-tag-remove" data-index="${i}" aria-label="刪除">×</button>
+    </span>`).join('')
+
+  tagsEl.querySelectorAll('.keyword-tag-remove').forEach(btn => {
+    btn.addEventListener('click', () => removeKeyword(parseInt(btn.dataset.index)))
+  })
+
+  // Show add row / lock prompt / limit reached
+  if (!unlocked && count >= FREE_KEYWORDS_PER_BOARD) {
+    addRow.classList.add('hidden')
+    limitInfo.innerHTML = `<button class="keyword-unlock-btn" id="keyword-unlock-btn">🔒 解鎖以新增更多關鍵字（最多 ${MAX_KEYWORDS_PER_BOARD} 個）</button>`
+    document.getElementById('keyword-unlock-btn').addEventListener('click', async () => {
+      const success = await showRealAd(true, { type: 'unlock' })
+      if (success) renderKeywords()
+    })
+  } else if (count >= MAX_KEYWORDS_PER_BOARD) {
+    addRow.classList.add('hidden')
+    limitInfo.textContent = `已達上限（${MAX_KEYWORDS_PER_BOARD} 個）`
+  } else {
+    addRow.classList.remove('hidden')
+    limitInfo.textContent = count > 0 ? `${count} / ${maxKw} 個關鍵字` : ''
+  }
+}
+
+async function addKeyword() {
+  const input = document.getElementById('keyword-input')
+  const kw = input.value.trim()
+  if (!kw) return
+  if (editingKeywords.includes(kw)) { showToast('關鍵字已存在'); return }
+
+  const newKeywords = [...editingKeywords, kw]
+  try {
+    const data = await apiFetch(`/api/subscriptions/${encodeURIComponent(editingBoard)}/keywords`, {
+      method: 'PUT',
+      body: JSON.stringify({ keywords: newKeywords }),
+    })
+    editingKeywords = data.keywords
+    input.value = ''
+    renderKeywords()
+  } catch (err) {
+    if (err.status === 402) showToast('請先解鎖進階功能')
+    else showToast('新增失敗，請稍後再試')
+  }
+}
+
+async function removeKeyword(index) {
+  const newKeywords = editingKeywords.filter((_, i) => i !== index)
+  try {
+    const data = await apiFetch(`/api/subscriptions/${encodeURIComponent(editingBoard)}/keywords`, {
+      method: 'PUT',
+      body: JSON.stringify({ keywords: newKeywords }),
+    })
+    editingKeywords = data.keywords
+    renderKeywords()
+  } catch {
+    showToast('刪除失敗，請稍後再試')
+  }
+}
+
+document.getElementById('keyword-add-btn').addEventListener('click', addKeyword)
+document.getElementById('keyword-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); addKeyword() }
+})
 
 document.getElementById('delete-btn').addEventListener('click', () => {
   if (!editingBoard) return

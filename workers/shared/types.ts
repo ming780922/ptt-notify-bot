@@ -55,6 +55,7 @@ export interface ActiveBoard {
     user_id: number
     chat_id: number
     board_rank: number
+    keywords: string[]
   }>
 }
 

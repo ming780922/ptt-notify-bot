@@ -12,6 +12,8 @@ import {
   deleteSubscription,
   getSubscriptionByUserAndBoard,
   createSubscriptionFilter,
+  getSubscriptionFilter,
+  updateSubscriptionFilter,
   getPopularBoards,
   searchBoards,
   upsertBoard,
@@ -21,7 +23,6 @@ import {
   enqueuePendingNotifications,
   fetchPendingNotificationsWithUser,
   updateNotificationStatuses,
-  updateAdUnlockedAt,
 } from './db/queries'
 import { CONFIG } from '../../shared/config'
 
@@ -79,7 +80,14 @@ export default {
         if (pathname === '/api/subscriptions' && method === 'POST') {
           return handleAddSubscription(request, env, tgUser.telegramId)
         }
-        const delMatch = pathname.match(/^\/api\/subscriptions\/(.+)$/)
+        const kwMatch = pathname.match(/^\/api\/subscriptions\/(.+)\/keywords$/)
+        if (kwMatch && method === 'GET') {
+          return handleGetKeywords(env, tgUser.telegramId, decodeURIComponent(kwMatch[1]))
+        }
+        if (kwMatch && method === 'PUT') {
+          return handlePutKeywords(request, env, tgUser.telegramId, decodeURIComponent(kwMatch[1]))
+        }
+        const delMatch = pathname.match(/^\/api\/subscriptions\/([^/]+)$/)
         if (delMatch && method === 'DELETE') {
           return handleDeleteSubscription(env, tgUser.telegramId, decodeURIComponent(delMatch[1]))
         }
@@ -238,6 +246,38 @@ async function handleSearchBoards(url: URL, env: Env): Promise<Response> {
     console.error(`[api] handleSearchBoards: Error searching boards for "${q}":`, err)
     return error(`Database error while searching for "${q}"`, 500)
   }
+}
+
+async function handleGetKeywords(env: Env, telegramId: number, board: string): Promise<Response> {
+  const sub = await getSubscriptionByUserAndBoard(env.DB, telegramId, board)
+  if (!sub) return error('Subscription not found', 404)
+  const keywords = await getSubscriptionFilter(env.DB, sub.id)
+  return json({ keywords })
+}
+
+async function handlePutKeywords(
+  request: Request,
+  env: Env,
+  telegramId: number,
+  board: string
+): Promise<Response> {
+  const body = await request.json<{ keywords?: unknown }>()
+  if (!Array.isArray(body.keywords)) return error('keywords must be an array')
+
+  const keywords = (body.keywords as unknown[])
+    .map((k) => String(k).trim())
+    .filter((k) => k.length > 0)
+
+  const user = await getUserById(env.DB, telegramId)
+  const unlocked = user ? isUnlocked(user.ad_unlocked_at) : false
+  const limit = unlocked ? CONFIG.MAX_KEYWORDS_PER_BOARD : CONFIG.FREE_KEYWORDS_PER_BOARD
+  if (keywords.length > limit) return error('AD_REQUIRED', 402)
+
+  const sub = await getSubscriptionByUserAndBoard(env.DB, telegramId, board)
+  if (!sub) return error('Subscription not found', 404)
+
+  await updateSubscriptionFilter(env.DB, sub.id, keywords)
+  return json({ keywords })
 }
 
 async function handleAdComplete(env: Env, telegramId: number, url: URL): Promise<Response> {
