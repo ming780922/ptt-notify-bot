@@ -1,36 +1,75 @@
 # GEMINI.md - PTT Notify Bot
 
 ## Project Overview
-PTT Notify Bot is a notification service that monitors PTT boards and sends real-time updates to users via Telegram. It utilizes a modern serverless architecture combining Cloudflare Workers, Cloudflare D1 (SQLite), and GitHub Actions.
+PTT Notify Bot is a real-time notification service that monitors PTT (Taiwan's largest terminal-based forum) boards and dispatches updates to users via Telegram. It is built using a modern, serverless, and decoupled architecture designed for high efficiency and low cost.
 
-### Architecture
-- **Bot Worker (`workers/bot`)**: Handles Telegram Webhook interactions, commands, and scheduled tasks (cron). Built with `grammy` and TypeScript.
-- **API Worker (`workers/api`)**: Serves as the backend for the Telegram Mini App and handles callbacks from the crawler. Uses `INTERNAL_SECRET` for authentication.
-- **Crawler (`crawler/`)**: A Python-based asynchronous crawler that runs on GitHub Actions to fetch PTT updates without consuming Cloudflare Worker CPU time.
-- **Mini App (`miniapp/`)**: A pure HTML/JS frontend for users to manage their board subscriptions.
-- **Database**: Cloudflare D1 (`ptt-notify-bot-db`) shared between both Workers.
+### System Architecture
+The project is divided into four main components that interact through a Cloudflare D1 database and internal API endpoints.
+
+```mermaid
+graph TD
+    subgraph "Cloudflare Ecosystem"
+        BotWorker["Bot Worker (workers/bot)"]
+        ApiWorker["API Worker (workers/api)"]
+        D1[("Cloudflare D1 (SQLite)")]
+        MiniApp["Mini App (Cloudflare Pages)"]
+    end
+
+    subgraph "GitHub Actions"
+        CrawlerJob["Crawler Job (crawl.yml)"]
+        NotifierJob["Notifier Job (notify.yml)"]
+    end
+
+    subgraph "External"
+        PTT["PTT Web (ptt.cc)"]
+        Telegram["Telegram Bot API"]
+    end
+
+    %% Interactions
+    BotWorker -->|Cron| CrawlerJob
+    BotWorker -->|Cron| NotifierJob
+    CrawlerJob -->|Fetch| PTT
+    CrawlerJob -->|POST /internal/queue| ApiWorker
+    NotifierJob -->|GET /internal/pending-notifications| ApiWorker
+    NotifierJob -->|sendMessage| Telegram
+    ApiWorker --- D1
+    BotWorker --- D1
+    MiniApp -->|API Requests| ApiWorker
+    Telegram -->|Webhook| BotWorker
+```
+
+## Key Components
+
+- **Bot Worker (`workers/bot`)**: The entry point for Telegram Webhook interactions and the orchestrator for scheduled cron jobs. It manages the `crawl_queue` and dispatches GitHub Action workflows.
+- **API Worker (`workers/api`)**: The backend service for the Telegram Mini App and the internal data gateway for the Crawler and Notifier. It handles authentication via Telegram `initData`.
+- **Crawler (`crawler/crawler.py`)**: A Python-based scraper running on GitHub Actions. It fetches the latest articles from PTT and filters them based on user subscriptions and keywords before enqueuing them in the database.
+- **Notifier (`crawler/notify.py`)**: Responsible for fetching pending notifications from the API and sending them to users via the Telegram Bot API. It handles message formatting and subscription tier logic.
+- **Mini App (`miniapp/`)**: A pure HTML/JS/CSS frontend that allows users to manage their board subscriptions and keyword filters within the Telegram interface.
 
 ## Key Technologies
 - **Backend**: TypeScript, Cloudflare Workers, grammy (Telegram Bot Framework)
 - **Database**: Cloudflare D1 (SQLite)
-- **Crawler**: Python 3.12, httpx, BeautifulSoup4
+- **Crawler/Notifier**: Python 3.12, httpx, BeautifulSoup4
 - **Frontend**: Vanilla HTML/JS/CSS (Telegram Mini App)
-- **CI/CD**: GitHub Actions
+- **CI/CD**: GitHub Actions for both deployment and scheduled tasks.
+
+## Notification Features & Formatting
+
+### Keyword Highlighting
+When a user sets keywords for a board, the bot automatically highlights matching terms in the article title using **Bold** and __Underline__ formatting.
+- **Logic**: Implemented in `crawler/notify.py` using HTML tags (`<b><u>...</u></b>`).
+- **Data Flow**: The Notifier joins `pending_notifications` with `subscription_filters` using a case-insensitive board match to ensure consistent keyword retrieval.
+
+### Subscription Tiers
+- **Free Tier**: Users can subscribe to up to 2 boards with 1 keyword per board for free.
+- **Advanced Features**: Users can unlock full notifications for more boards and more keywords by watching an advertisement (valid for 24 hours).
 
 ## Building and Running
 
 ### Development Commands
-#### Bot Worker
+#### Workers (Bot & API)
 ```bash
-cd workers/bot
-npm install
-npm run dev          # Start local development server
-npm run typecheck    # Run TypeScript type checking
-```
-
-#### API Worker
-```bash
-cd workers/api
+# In either workers/bot or workers/api
 npm install
 npm run dev          # Start local development server
 npm run typecheck    # Run TypeScript type checking
@@ -46,22 +85,15 @@ npx wrangler d1 execute ptt-notify-bot-db --local --file=src/db/schema.sql
 npx wrangler d1 execute ptt-notify-bot-db --remote --file=src/db/schema.sql
 ```
 
-### Deployment
-- **Workers**: `npx wrangler deploy` within the respective worker directory.
-- **Mini App**: `npx wrangler pages deploy . --project-name ptt-notify-miniapp` within `miniapp/`.
-- **Secrets**: Use `npx wrangler secret put` to set required environment variables (see `CLAUDE.md` for full list).
-
 ## Development Conventions
-- **Shared Code**: Common types and configurations are located in `workers/shared/`.
-- **Database Logic**: All D1 queries should be centralized in `queries.ts` files within each worker.
-- **Internal Security**: Communication between the crawler and API Worker is secured via an `INTERNAL_SECRET` header (`X-Internal-Secret`).
-- **Crawler Design**: The crawler uses a job queue (`crawl_queue`) in D1 to manage tasks and prevent duplicate runs.
-- **Documentation**: `CLAUDE.md` serves as the primary operational guide for deployment, secrets, and system data flow.
+- **Shared Code**: Shared types and configurations are located in `workers/shared/`.
+- **Database Access**: All D1 queries are centralized in `queries.ts`. `workers/api` re-exports queries from `workers/bot` to maintain consistency.
+- **Security**: Internal communication between GitHub Actions and the API Worker is protected by an `INTERNAL_SECRET` header.
 
-## Key Files
-- `workers/bot/src/bot.ts`: Telegram bot instance and middleware setup.
-- `workers/bot/src/index.ts`: Entry point for Bot Worker (fetch & scheduled handlers).
-- `workers/api/src/index.ts`: Routing logic for the API Worker.
-- `crawler/crawler.py`: Main logic for fetching PTT articles and reporting back to the API.
-- `workers/shared/types.ts`: TypeScript interfaces for the entire project.
-- `workers/bot/src/db/schema.sql`: Database schema definition.
+## Troubleshooting
+
+### Keywords Not Highlighted
+If keywords are not appearing as bold/underlined in notifications:
+1. **Check Casing**: Ensure the board name casing in your subscription matches the notification (the system now uses case-insensitive joins to mitigate this).
+2. **Verify Notifier Logs**: Check the GitHub Actions logs for `notify.yml` to see if keywords are being correctly parsed from the database.
+3. **Parse Mode**: The Notifier uses `parse_mode: "HTML"`. Ensure no other middleware is overriding the message formatting.
