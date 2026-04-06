@@ -474,6 +474,7 @@ function parseKeywords(json: string): string[] {
 export interface PendingNotificationWithUser extends PendingNotification {
   ad_unlocked_at: number
   expiry_notified: number
+  keywords: string
 }
 
 export async function fetchPendingNotificationsWithUser(
@@ -483,9 +484,11 @@ export async function fetchPendingNotificationsWithUser(
   const now = Math.floor(Date.now() / 1000)
   const rows = await db
     .prepare(
-      `SELECT pn.*, u.ad_unlocked_at, u.expiry_notified
+      `SELECT pn.*, u.ad_unlocked_at, u.expiry_notified, COALESCE(sf.keywords, '[]') AS keywords
        FROM pending_notifications pn
        JOIN users u ON u.telegram_id = pn.user_id
+       LEFT JOIN subscriptions s ON s.user_id = pn.user_id AND s.board = pn.board
+       LEFT JOIN subscription_filters sf ON sf.subscription_id = s.id
        WHERE pn.status = 'pending'
        ORDER BY pn.created_at ASC
        LIMIT ?`

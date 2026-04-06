@@ -4,6 +4,7 @@
 import asyncio
 import datetime
 import html
+import json
 import os
 import re
 import time
@@ -85,13 +86,35 @@ def miniapp_button(label: str, action: str = None) -> dict:
     return {"text": label, "web_app": {"url": url}}
 
 
+# ── Keyword highlight ─────────────────────────────────────────────────────────
+
+def highlight_keywords(title: str, keywords: list[str]) -> str:
+    """Bold-highlight matched keywords in title; HTML-escapes all other parts."""
+    if not keywords or not title:
+        return html.escape(title)
+    pattern = re.compile(
+        '(' + '|'.join(re.escape(kw) for kw in keywords) + ')',
+        re.IGNORECASE,
+    )
+    parts = pattern.split(title)
+    result = []
+    for i, part in enumerate(parts):
+        if i % 2 == 1:  # captured group = matched keyword
+            result.append(f'<b>{html.escape(part)}</b>')
+        else:
+            result.append(html.escape(part))
+    return ''.join(result)
+
+
 # ── Notification senders ──────────────────────────────────────────────────────
 
 async def send_full_notification(
     client: httpx.AsyncClient,
     n: dict,
 ) -> None:
-    title = html.escape(n['article_title'] or '')
+    keywords = json.loads(n.get('keywords') or '[]')
+    raw_title = n['article_title'] or ''
+    title = highlight_keywords(raw_title, keywords)
     article_url = n.get("article_url") or ""
     pub_time = format_article_time(n.get("article_id", ""))
 
