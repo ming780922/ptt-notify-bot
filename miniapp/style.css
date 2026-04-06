@@ -402,6 +402,9 @@ html, body {
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+.spinner--sm { padding: 8px 0; }
+.spinner--sm::after { width: 18px; height: 18px; border-width: 2px; }
+
 /* ── Mock Ad Modal ────────────────────────────────────────────────────────── */
 .modal-content.ad-content {
   background: var(--bg);

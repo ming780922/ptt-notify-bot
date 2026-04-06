@@ -363,6 +363,9 @@ async function handleAddBoard(board) {
     if (!success) return
   }
 
+  // 廣告結束後進入 API 階段，立即把 modal body 換成 spinner 讓使用者知道在處理中
+  document.querySelector('#modal-add .modal-body').innerHTML = '<div class="spinner"></div>'
+
   try {
     await apiFetch('/api/subscriptions', {
       method: 'POST',
@@ -372,13 +375,10 @@ async function handleAddBoard(board) {
     showToast(`✅ 已訂閱 ${board}`)
     await Promise.all([loadUser(), loadSubscriptions()])
   } catch (err) {
-    if (err.status === 402) {
-      showToast('請先解鎖進階功能')
-    } else if (err.status === 404) {
-      showToast(`找不到看板「${board}」`)
-    } else {
-      showToast('新增失敗，請稍後再試')
-    }
+    closeModal('modal-add')
+    if (err.status === 402) showToast('請先解鎖進階功能')
+    else if (err.status === 404) showToast(`找不到看板「${board}」`)
+    else showToast('新增失敗，請稍後再試')
   }
 }
 
@@ -394,6 +394,7 @@ function openEditModal(board) {
 }
 
 async function loadKeywords(board) {
+  document.getElementById('keyword-tags').innerHTML = '<div class="spinner spinner--sm"></div>'
   try {
     const data = await apiFetch(`/api/subscriptions/${encodeURIComponent(board)}/keywords`)
     editingKeywords = data.keywords || []
@@ -445,6 +446,10 @@ async function addKeyword() {
     if (!success) return
   }
 
+  const addBtn    = document.getElementById('keyword-add-btn')
+  addBtn.disabled = true
+  input.disabled  = true
+
   const newKeywords = [...editingKeywords, kw]
   try {
     const data = await apiFetch(`/api/subscriptions/${encodeURIComponent(editingBoard)}/keywords`, {
@@ -457,19 +462,26 @@ async function addKeyword() {
   } catch (err) {
     if (err.status === 402) showToast('請先解鎖進階功能')
     else showToast('新增失敗，請稍後再試')
+  } finally {
+    addBtn.disabled = false
+    input.disabled  = false
   }
 }
 
 async function removeKeyword(index) {
-  const newKeywords = editingKeywords.filter((_, i) => i !== index)
+  const previous = [...editingKeywords]
+  editingKeywords = editingKeywords.filter((_, i) => i !== index)
+  renderKeywords()  // 樂觀更新：立即移除 tag
   try {
     const data = await apiFetch(`/api/subscriptions/${encodeURIComponent(editingBoard)}/keywords`, {
       method: 'PUT',
-      body: JSON.stringify({ keywords: newKeywords }),
+      body: JSON.stringify({ keywords: editingKeywords }),
     })
     editingKeywords = data.keywords
     renderKeywords()
   } catch {
+    editingKeywords = previous  // 復原
+    renderKeywords()
     showToast('刪除失敗，請稍後再試')
   }
 }
@@ -493,6 +505,11 @@ document.getElementById('confirm-cancel').addEventListener('click', () => {
 
 document.getElementById('confirm-ok').addEventListener('click', async () => {
   if (!editingBoard) return
+  const okBtn     = document.getElementById('confirm-ok')
+  const cancelBtn = document.getElementById('confirm-cancel')
+  okBtn.disabled     = true
+  okBtn.textContent  = '刪除中…'
+  cancelBtn.disabled = true
   try {
     await apiFetch(`/api/subscriptions/${encodeURIComponent(editingBoard)}`, { method: 'DELETE' })
     closeModal('modal-confirm')
@@ -501,6 +518,9 @@ document.getElementById('confirm-ok').addEventListener('click', async () => {
     await Promise.all([loadUser(), loadSubscriptions()])
   } catch {
     showToast('刪除失敗，請稍後再試')
+    okBtn.disabled     = false
+    okBtn.textContent  = '刪除'
+    cancelBtn.disabled = false
   }
 })
 
