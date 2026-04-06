@@ -303,6 +303,11 @@ html, body {
   font-weight: 600;
   cursor: pointer;
   line-height: 1;
+  transition: opacity 0.15s;
+}
+.keyword-add-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
 }
 
 .keyword-limit-info {

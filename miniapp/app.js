@@ -388,6 +388,7 @@ function openEditModal(board) {
   editingKeywords = []
   document.getElementById('edit-board-name').textContent = board
   document.getElementById('keyword-input').value = ''
+  document.getElementById('keyword-add-btn').disabled = true
   renderKeywords()
   openModal('modal-edit')
   loadKeywords(board)
@@ -489,6 +490,9 @@ async function removeKeyword(index) {
 document.getElementById('keyword-add-btn').addEventListener('click', addKeyword)
 document.getElementById('keyword-input').addEventListener('keydown', e => {
   if (e.key === 'Enter') { e.preventDefault(); addKeyword() }
+})
+document.getElementById('keyword-input').addEventListener('input', e => {
+  document.getElementById('keyword-add-btn').disabled = !e.target.value.trim()
 })
 
 document.getElementById('delete-btn').addEventListener('click', () => {
