@@ -28,12 +28,15 @@
         <span class="modal-title">新增看板</span>
         <button class="modal-close" data-close="modal-add">✕</button>
       </div>
-      <div class="modal-body">
-        <input id="board-search" class="search-input" type="text"
-               placeholder="搜尋看板名稱…" autocomplete="off" />
-        <div id="search-results" class="board-grid hidden"></div>
-        <p class="section-label">熱門看板</p>
-        <div id="popular-boards" class="board-grid"></div>
+      <div id="modal-add-body" class="modal-body">
+        <div id="modal-add-loading" class="spinner hidden"></div>
+        <div id="modal-add-ui">
+          <input id="board-search" class="search-input" type="text"
+                 placeholder="搜尋看板名稱…" autocomplete="off" />
+          <div id="search-results" class="board-grid hidden"></div>
+          <p class="section-label">熱門看板</p>
+          <div id="popular-boards" class="board-grid"></div>
+        </div>
       </div>
     </div>
   </div>

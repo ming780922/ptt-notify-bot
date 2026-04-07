@@ -169,6 +169,9 @@ function renderBoardGrid(container, boards) {
 async function openAddModal() {
   document.getElementById('board-search').value = ''
   document.getElementById('search-results').classList.add('hidden')
+  document.getElementById('modal-add-loading').classList.add('hidden')
+  document.getElementById('modal-add-ui').classList.remove('hidden')
+
   openModal('modal-add')
   if (popularBoards.length === 0) await loadPopularBoards()
 }
@@ -363,8 +366,9 @@ async function handleAddBoard(board) {
     if (!success) return
   }
 
-  // 廣告結束後進入 API 階段，立即把 modal body 換成 spinner 讓使用者知道在處理中
-  document.querySelector('#modal-add .modal-body').innerHTML = '<div class="spinner"></div>'
+  // 廣告結束後進入 API 階段，進入載入狀態
+  document.getElementById('modal-add-loading').classList.remove('hidden')
+  document.getElementById('modal-add-ui').classList.add('hidden')
 
   try {
     await apiFetch('/api/subscriptions', {
