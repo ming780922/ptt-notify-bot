@@ -503,6 +503,14 @@ document.getElementById('delete-btn').addEventListener('click', () => {
   if (!editingBoard) return
   document.getElementById('confirm-text').textContent =
     `確定要取消訂閱「${editingBoard}」嗎？`
+
+  // 重置按鈕狀態，避免前一次刪除殘留位元
+  const okBtn     = document.getElementById('confirm-ok')
+  const cancelBtn = document.getElementById('confirm-cancel')
+  okBtn.disabled     = false
+  okBtn.textContent  = '刪除'
+  cancelBtn.disabled = false
+
   closeModal('modal-edit')
   openModal('modal-confirm')
 })
@@ -526,6 +534,7 @@ document.getElementById('confirm-ok').addEventListener('click', async () => {
     await Promise.all([loadUser(), loadSubscriptions()])
   } catch {
     showToast('刪除失敗，請稍後再試')
+  } finally {
     okBtn.disabled     = false
     okBtn.textContent  = '刪除'
     cancelBtn.disabled = false
