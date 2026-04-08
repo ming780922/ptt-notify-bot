@@ -92,7 +92,7 @@ function renderUnlockStatus() {
   document.documentElement.style.setProperty('--unlock-bar-height', '36px')
 
   if (!userState.is_unlocked) {
-    label.textContent = '🔒 完整通知未啟用'
+    label.textContent = `🔒 第 ${FREE_BOARDS_LIMIT + 1} 板起通知已暫停`
     actionBtn.textContent = '解鎖'
     actionBtn.classList.remove('hidden')
     actionBtn.onclick = async () => {
@@ -102,7 +102,7 @@ function renderUnlockStatus() {
   } else if (userState.can_extend) {
     const remaining = userState.unlock_expires_at - Math.floor(Date.now() / 1000)
     const hours = Math.ceil(remaining / 3600)
-    label.textContent = `🔓 剩 ${hours} 小時`
+    label.textContent = `🔓 前${FREE_BOARDS_LIMIT}個看板免費完整通知・其他看板完整通知功能剩 ${hours}h`
     actionBtn.textContent = '延長 24h'
     actionBtn.classList.remove('hidden')
     actionBtn.onclick = async () => {
@@ -112,7 +112,7 @@ function renderUnlockStatus() {
   } else {
     const remaining = userState.unlock_expires_at - Math.floor(Date.now() / 1000)
     const hours = Math.ceil(remaining / 3600)
-    label.textContent = `🔓 剩 ${hours} 小時`
+    label.textContent = `🔓 前${FREE_BOARDS_LIMIT}個看板免費完整通知・其他看板完整通知功能剩 ${hours}h`
     actionBtn.classList.add('hidden')
   }
 }
