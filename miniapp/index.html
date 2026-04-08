@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -9,6 +10,7 @@
   <!-- Monetag Rewarded Interstitial SDK -->
   <script src='//libtl.com/sdk.js' data-zone='10832818' data-sdk='show_10832818'></script>
 </head>
+
 <body>
   <!-- ── Main ───────────────────────────────────────────────────────────── -->
   <div id="app">
@@ -31,8 +33,7 @@
       <div id="modal-add-body" class="modal-body">
         <div id="modal-add-loading" class="spinner hidden"></div>
         <div id="modal-add-ui">
-          <input id="board-search" class="search-input" type="text"
-                 placeholder="搜尋看板名稱…" autocomplete="off" />
+          <input id="board-search" class="search-input" type="text" placeholder="搜尋看板名稱…" autocomplete="off" />
           <div id="search-results" class="board-grid hidden"></div>
           <p class="section-label">熱門看板</p>
           <div id="popular-boards" class="board-grid"></div>
@@ -50,11 +51,11 @@
       </div>
       <div class="modal-body">
         <div class="keyword-section">
-          <p class="section-label">關鍵字過濾 <span class="keyword-hint">（空白＝接收全部文章）</span></p>
+          <p class="section-label">關鍵字過濾</p>
           <div id="keyword-tags" class="keyword-tags"></div>
           <div id="keyword-add-row" class="keyword-add-row">
-            <input id="keyword-input" class="keyword-input" type="text"
-                   placeholder="輸入關鍵字…" maxlength="20" autocomplete="off" />
+            <input id="keyword-input" class="keyword-input" type="text" placeholder="輸入關鍵字…" maxlength="20"
+              autocomplete="off" />
             <button id="keyword-add-btn" class="keyword-add-btn">＋</button>
           </div>
           <p id="keyword-limit-info" class="keyword-limit-info"></p>
@@ -103,4 +104,5 @@
 
   <script src="app.js?v=7"></script>
 </body>
+
 </html>

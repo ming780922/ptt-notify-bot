@@ -48,7 +48,9 @@ def format_article_time(article_id: str) -> str:
     if not m:
         return ""
     dt = datetime.datetime.fromtimestamp(int(m.group(1)), tz=TW_TZ)
-    return dt.strftime("%m/%d %H:%M")
+    # PTT 原生格式：Wed Apr  8 11:30:44 2026（個位數日期補空格）
+    day = dt.strftime("%d").lstrip("0")
+    return dt.strftime(f"%a %b {day:>2} %H:%M:%S %Y")
 
 
 def build_board_groups(notifications: list[dict], user_id: int) -> tuple[list[str], list[str]]:
@@ -120,7 +122,7 @@ async def send_full_notification(
 
     text = f"📋 <b>{html.escape(n['board'])}</b> 新文章\n{title}"
     if pub_time:
-        text += f"\n🕐 {pub_time}"
+        text += f"\n{pub_time}"
     if article_url:
         text += f"\n{article_url}"
     await send_message(client, n["user_id"], text, [])
