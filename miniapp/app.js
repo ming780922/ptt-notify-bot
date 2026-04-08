@@ -257,43 +257,33 @@ function showMockAd(isPreCheck = false, shouldResetTimer = true, context = { typ
     const adDesc   = modal.querySelector('.ad-body p')
 
     // 依情境設定彈窗內容
-    const isAddBoard    = context.type === 'add-board'
-    const isAddKeyword  = context.type === 'add-keyword'
-    const steps = '<div style="display:inline-block;text-align:left">① 等倒數結束 → 點 ✕ 關閉<br>② 或點擊廣告 → 立即完成，返回 Bot 即可</div>'
+    const isAddBoard   = context.type === 'add-board'
+    const isAddKeyword = context.type === 'add-keyword'
+    const adHeader = modal.querySelector('.ad-header')
+    const steps = '① 等倒數結束 → 點 ✕ 關閉<br>② 或點擊廣告 → 立即完成'
+
     if (isAddBoard) {
       adIcon.textContent  = '📋'
       adTitle.textContent = `新增 ${context.board}`
-      adDesc.innerHTML    = `超過免費上限的看板需觀看廣告才能完成訂閱<br><br>${steps}`
+      adDesc.innerHTML    = isPreCheck ? `第 ${FREE_BOARDS_LIMIT + 1} 個以上的看板需觀看廣告` : steps
     } else if (isAddKeyword) {
       adIcon.textContent  = '🔑'
       adTitle.textContent = '新增關鍵字'
-      adDesc.innerHTML    = `每個看板免費新增${FREE_KEYWORDS_PER_BOARD}個關鍵字<br>觀看廣告新增更多<br><br>${steps}`
+      adDesc.innerHTML    = isPreCheck ? `每板免費 ${FREE_KEYWORDS_PER_BOARD} 個關鍵字，超出需觀看廣告` : steps
     } else {
-      const freeBoards = subscriptions
-        .filter(s => s.board_rank <= FREE_BOARDS_LIMIT)
-        .sort((a, b) => a.board_rank - b.board_rank)
-        .map(s => s.board)
-      const paidBoards = subscriptions
-        .filter(s => s.board_rank > FREE_BOARDS_LIMIT)
-        .sort((a, b) => a.board_rank - b.board_rank)
-        .map(s => s.board)
-      const paidStr = paidBoards.length <= 2
-        ? paidBoards.join('、')
-        : paidBoards.slice(0, 2).join('、') + ` 及 ${paidBoards.length - 2} 個看板`
-      const freeStr = freeBoards.slice(0, 2).join('、')
       adIcon.textContent  = '🔔'
-      adTitle.textContent = '完整通知功能已暫停'
-      adDesc.innerHTML    = `${esc(paidStr)} 完整通知已暫停<br>${esc(freeStr)} 不受影響<br><br>觀看一則廣告即可解鎖完整通知功能 24 小時<br><br>${steps}`
+      adTitle.textContent = '解鎖完整通知'
+      adDesc.innerHTML    = isPreCheck ? `觀看廣告解鎖 24 小時完整通知` : steps
     }
 
     modal.classList.remove('hidden')
 
     if (isPreCheck) {
+      adHeader.classList.add('hidden')
       timer.classList.add('hidden')
       closeBtn.classList.remove('hidden')
       closeBtn.disabled = false
       closeBtn.textContent = isAddBoard || isAddKeyword ? '觀看廣告並新增' : '觀看廣告並解鎖'
-      label.textContent    = ''
 
       closeBtn.onclick = () => {
         closeBtn.classList.add('hidden')
@@ -306,6 +296,7 @@ function showMockAd(isPreCheck = false, shouldResetTimer = true, context = { typ
       return
     }
 
+    adHeader.classList.remove('hidden')
     label.textContent = '贊助商廣告'
     let count = 5
     timer.classList.remove('hidden')
