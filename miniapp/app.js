@@ -80,6 +80,8 @@ function renderUnlockStatus() {
   const bar       = document.getElementById('unlock-bar')
   const label     = document.getElementById('unlock-label')
   const actionBtn = document.getElementById('unlock-action-btn')
+  const hintBtn   = document.getElementById('unlock-hint-btn')
+  const tooltip   = document.getElementById('unlock-hint-tooltip')
 
   const needsUnlock = userState && userState.subscription_count > FREE_BOARDS_LIMIT
   if (!needsUnlock) {
@@ -91,8 +93,15 @@ function renderUnlockStatus() {
   bar.classList.remove('hidden')
   document.documentElement.style.setProperty('--unlock-bar-height', '36px')
 
+  tooltip.textContent = `前 ${FREE_BOARDS_LIMIT} 個看板免費完整通知，其他看板需解鎖才能收到完整通知`
+  hintBtn.classList.remove('hidden')
+  hintBtn.onclick = (e) => {
+    e.stopPropagation()
+    tooltip.classList.toggle('hidden')
+  }
+
   if (!userState.is_unlocked) {
-    label.textContent = `🔒 第 ${FREE_BOARDS_LIMIT + 1} 板起通知已暫停`
+    label.textContent = `🔒 完整通知已暫停`
     actionBtn.textContent = '解鎖'
     actionBtn.classList.remove('hidden')
     actionBtn.onclick = async () => {
@@ -102,7 +111,7 @@ function renderUnlockStatus() {
   } else if (userState.can_extend) {
     const remaining = userState.unlock_expires_at - Math.floor(Date.now() / 1000)
     const hours = Math.ceil(remaining / 3600)
-    label.textContent = `🔓 前${FREE_BOARDS_LIMIT}個看板免費完整通知・其他看板完整通知功能剩 ${hours}h`
+    label.textContent = `🔓 完整通知剩 ${hours}h`
     actionBtn.textContent = '延長 24h'
     actionBtn.classList.remove('hidden')
     actionBtn.onclick = async () => {
@@ -112,10 +121,14 @@ function renderUnlockStatus() {
   } else {
     const remaining = userState.unlock_expires_at - Math.floor(Date.now() / 1000)
     const hours = Math.ceil(remaining / 3600)
-    label.textContent = `🔓 前${FREE_BOARDS_LIMIT}個看板免費完整通知・其他看板完整通知功能剩 ${hours}h`
+    label.textContent = `🔓 完整通知剩 ${hours}h`
     actionBtn.classList.add('hidden')
   }
 }
+
+document.addEventListener('click', () => {
+  document.getElementById('unlock-hint-tooltip')?.classList.add('hidden')
+})
 
 // ── Render ─────────────────────────────────────────────────────────────────────
 function renderSubscriptions() {
