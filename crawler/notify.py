@@ -53,33 +53,6 @@ def format_article_time(article_id: str) -> str:
     return dt.strftime(f"%a %b {day:>2} %H:%M:%S %Y")
 
 
-def build_board_groups(notifications: list[dict], user_id: int) -> tuple[list[str], list[str]]:
-    """從批次通知中分類看板，回傳 (free_boards, affected_boards)，各自依 board_rank 排序"""
-    free: dict[str, int] = {}
-    affected: dict[str, int] = {}
-    for item in notifications:
-        if item.get("user_id") != user_id:
-            continue
-        rank = item.get("board_rank") or 1
-        board = item.get("board", "")
-        if not board:
-            continue
-        if rank <= FREE_BOARDS_LIMIT:
-            free.setdefault(board, rank)
-        else:
-            affected.setdefault(board, rank)
-    free_boards     = sorted(free,     key=lambda b: free[b])
-    affected_boards = sorted(affected, key=lambda b: affected[b])
-    return free_boards, affected_boards
-
-
-def format_affected_str(boards: list[str]) -> str:
-    if not boards:
-        return "部分看板"
-    if len(boards) <= 2:
-        return "、".join(boards)
-    return f"{'、'.join(boards[:2])} 等 {len(boards)} 個看板"
-
 
 def miniapp_button(label: str, action: str = None) -> dict:
     url = MINIAPP_URL
@@ -138,18 +111,9 @@ async def send_hidden_notification(client: httpx.AsyncClient, n: dict) -> None:
     await send_message(client, n["user_id"], text, keyboard)
 
 
-async def send_expiry_notice(
-    client: httpx.AsyncClient,
-    n: dict,
-    free_boards: list[str],
-    affected_boards: list[str],
-) -> None:
-    affected_str = format_affected_str(affected_boards)
-    free_str = "、".join(free_boards) if free_boards else f"前 {FREE_BOARDS_LIMIT} 個訂閱看板"
+async def send_expiry_notice(client: httpx.AsyncClient, n: dict) -> None:
     text = (
         f"⏰ <b>完整通知功能已到期</b>\n"
-        f"{html.escape(affected_str)}已無法收到完整通知\n"
-        f"{html.escape(free_str)} 訂閱不受影響\n"
         f"觀看廣告啟用完整通知功能 24 小時。"
     )
     keyboard = [[miniapp_button("🎬 解鎖完整通知功能", "unlock")]]
@@ -202,8 +166,7 @@ async def main() -> None:
                     # 1. 到期提醒優先發送，讓使用者先看到說明再看隱藏通知
                     if needs_expiry:
                         print("  [Action] Sending expiry notice...")
-                        free_boards, affected_boards = build_board_groups(notifications, n["user_id"])
-                        await send_expiry_notice(client, n, free_boards, affected_boards)
+                        await send_expiry_notice(client, n)
                         extra_update = {"expiry_notified": 1}
                         sent_expiry_this_run = True
                         await asyncio.sleep(0.1)
