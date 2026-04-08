@@ -150,7 +150,7 @@ async def main() -> None:
                 board_rank: int = n.get("board_rank") or 1
                 ad_unlocked_at: int = n.get("ad_unlocked_at") or 0
                 expiry_notified: int = n.get("expiry_notified") or 0
-                is_unlocked = (time.time() - ad_unlocked_at) < 86400
+                is_unlocked = ad_unlocked_at > time.time()
                 
                 print(f"  [Debug] ID: {n['id']}, Rank: {board_rank}, UnlockedAt: {ad_unlocked_at}, ExpiryNotified: {expiry_notified}, IsUnlocked: {is_unlocked}")
 

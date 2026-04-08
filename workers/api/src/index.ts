@@ -92,7 +92,7 @@ export default {
           return handleDeleteSubscription(env, tgUser.telegramId, decodeURIComponent(delMatch[1]))
         }
         if (pathname === '/api/ad/complete' && method === 'POST') {
-          return handleAdComplete(env, tgUser.telegramId, url)
+          return handleAdComplete(env, tgUser.telegramId)
         }
         return error('Not Found', 404)
       }
@@ -129,7 +129,12 @@ async function authenticateTelegram(
 }
 
 function isUnlocked(adUnlockedAt: number): boolean {
-  return adUnlockedAt + CONFIG.AD_UNLOCK_DURATION > Math.floor(Date.now() / 1000)
+  return adUnlockedAt > Math.floor(Date.now() / 1000)
+}
+
+function canExtend(adUnlockedAt: number): boolean {
+  const now = Math.floor(Date.now() / 1000)
+  return adUnlockedAt > now && adUnlockedAt - now <= CONFIG.AD_UNLOCK_DURATION
 }
 
 // ─── API handlers ──────────────────────────────────────────────────────────────
@@ -142,9 +147,10 @@ async function handleGetUser(env: Env, telegramId: number): Promise<Response> {
 
   return json({
     telegram_id: user.telegram_id,
-    ad_unlocked_at: user.ad_unlocked_at,
+    unlock_expires_at: user.ad_unlocked_at,
     expiry_notified: user.expiry_notified,
     is_unlocked: isUnlocked(user.ad_unlocked_at),
+    can_extend: canExtend(user.ad_unlocked_at),
     subscription_count,
   })
 }
@@ -277,18 +283,26 @@ async function handlePutKeywords(
   return json({ keywords })
 }
 
-async function handleAdComplete(env: Env, telegramId: number, url: URL): Promise<Response> {
-  const resetTimer = url.searchParams.get('reset') === 'true'
+async function handleAdComplete(env: Env, telegramId: number): Promise<Response> {
   const now = Math.floor(Date.now() / 1000)
+  const user = await getUserById(env.DB, telegramId)
+  if (!user) return error('User not found', 404)
 
-  if (resetTimer) {
-    // 重置解鎖時間與通知狀態
-    await env.DB.prepare(
-      `UPDATE users SET ad_unlocked_at = ?, expiry_notified = 0 WHERE telegram_id = ?`
-    ).bind(now, telegramId).run()
-  }
+  const currentExpiry = user.ad_unlocked_at
+  const isCurrentlyUnlocked = currentExpiry > now
+  const alreadyExtended = isCurrentlyUnlocked && currentExpiry - now > CONFIG.AD_UNLOCK_DURATION
 
-  return json({ ok: true, ad_unlocked_at: now })
+  if (alreadyExtended) return error('Already extended', 409)
+
+  const newExpiry = isCurrentlyUnlocked
+    ? currentExpiry + CONFIG.AD_UNLOCK_DURATION
+    : now + CONFIG.AD_UNLOCK_DURATION
+
+  await env.DB.prepare(
+    `UPDATE users SET ad_unlocked_at = ?, expiry_notified = 0 WHERE telegram_id = ?`
+  ).bind(newExpiry, telegramId).run()
+
+  return json({ ok: true, unlock_expires_at: newExpiry })
 }
 
 // ─── Internal handlers ─────────────────────────────────────────────────────────

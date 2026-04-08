@@ -12,6 +12,7 @@
   --danger:     #e53935;
   --radius:     12px;
   --bar-height: 64px;
+  --unlock-bar-height: 0px;
 }
 
 html, body {
@@ -26,7 +27,7 @@ html, body {
 
 /* ── App container ────────────────────────────────────────────────────────── */
 #app {
-  padding: 16px 16px calc(var(--bar-height) + 24px);
+  padding: 16px 16px calc(var(--bar-height) + var(--unlock-bar-height) + 24px);
   min-height: 100%;
 }
 
@@ -88,10 +89,42 @@ html, body {
   background: var(--bg);
   border-top: 1px solid color-mix(in srgb, var(--hint) 20%, transparent);
   display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.bottom-bar.hidden { display: none; }
+
+.unlock-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 2px 0;
+}
+.unlock-bar.hidden { display: none; }
+
+.unlock-label {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.unlock-action-btn {
+  padding: 5px 14px;
+  background: var(--btn-bg);
+  color: var(--btn-text);
+  border: none;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.unlock-action-btn.hidden { display: none; }
+
+.bottom-actions {
+  display: flex;
   gap: 10px;
   align-items: center;
 }
-.bottom-bar.hidden { display: none; }
 
 .add-btn {
   flex: 1;
