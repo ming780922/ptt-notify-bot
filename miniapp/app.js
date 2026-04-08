@@ -288,7 +288,7 @@ async function showRealAd(context = { type: 'unlock' }) {
 
   document.getElementById('modal-ad-mock').classList.add('hidden')
 
-  const needsApiCall = context.type !== 'add-keyword'
+  const needsApiCall = context.type === 'unlock' || (context.type === 'add-board' && !userState?.is_unlocked)
 
   return new Promise((resolve) => {
     if (typeof show_10832818 === 'function') {
