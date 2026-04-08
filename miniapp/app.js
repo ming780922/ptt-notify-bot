@@ -562,6 +562,7 @@ document.getElementById('confirm-ok').addEventListener('click', async () => {
     showToast(`已取消訂閱 ${editingBoard}`)
     editingBoard = null
     await Promise.all([loadUser(), loadSubscriptions()])
+    renderUnlockStatus()
   } catch {
     showToast('刪除失敗，請稍後再試')
   } finally {
