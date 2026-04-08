@@ -390,8 +390,8 @@ function showMockAd(isPreCheck = false, context = { type: 'unlock' }) {
 async function handleAddBoard(board) {
   const count = userState?.subscription_count ?? subscriptions.length
 
-  // 超過免費額度（例如 >= 2）則跳廣告
-  if (count >= FREE_BOARDS_LIMIT && !userState?.is_unlocked) {
+  // 超過免費額度一律跳廣告（與是否已解鎖通知功能無關）
+  if (count >= FREE_BOARDS_LIMIT) {
     const success = await showRealAd({ type: 'add-board', board })
     if (!success) return
   }
