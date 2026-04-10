@@ -26,6 +26,12 @@ let editingBoard = null     // board name string
 let searchTimer = null
 let editingKeywords = []         // string[] for the board currently open in edit modal
 
+// Returns true only when the ad gate for this feature is explicitly enabled by the server.
+// Defaults to false (ad disabled) when userState or ad_flags is not yet loaded.
+function isAdEnabled(feature) {
+  return userState?.ad_flags?.[feature] === true
+}
+
 // ── API ──────────────────────────────────────────────────────────────────────
 async function apiFetch(path, options = {}) {
   const url = API_BASE + path
@@ -84,7 +90,7 @@ function renderUnlockStatus() {
   const tooltip   = document.getElementById('unlock-hint-tooltip')
 
   const needsUnlock = userState && userState.subscription_count > FREE_BOARDS_LIMIT
-  if (!needsUnlock) {
+  if (!needsUnlock || !isAdEnabled('unlock')) {
     bar.classList.add('hidden')
     document.documentElement.style.setProperty('--unlock-bar-height', '0px')
     return
@@ -390,8 +396,8 @@ function showMockAd(isPreCheck = false, context = { type: 'unlock' }) {
 async function handleAddBoard(board) {
   const count = userState?.subscription_count ?? subscriptions.length
 
-  // 超過免費額度一律跳廣告（與是否已解鎖通知功能無關）
-  if (count >= FREE_BOARDS_LIMIT) {
+  // 超過免費額度且 add_board 廣告功能啟用時才跳廣告
+  if (isAdEnabled('add_board') && count >= FREE_BOARDS_LIMIT) {
     const success = await showRealAd({ type: 'add-board', board })
     if (!success) return
   }
@@ -475,8 +481,8 @@ async function addKeyword() {
   if (!kw) return
   if (editingKeywords.includes(kw)) { showToast('關鍵字已存在'); return }
 
-  // 超出免費數量時，每個關鍵字都需觀看一則廣告（與 is_unlocked 無關）
-  if (editingKeywords.length >= FREE_KEYWORDS_PER_BOARD) {
+  // 超出免費數量且 add_keyword 廣告功能啟用時才跳廣告
+  if (isAdEnabled('add_keyword') && editingKeywords.length >= FREE_KEYWORDS_PER_BOARD) {
     const success = await showRealAd({ type: 'add-keyword' })
     if (!success) return
   }
@@ -588,7 +594,7 @@ async function boot() {
 
   // 檢查是否有自動指令 (例如從 Telegram 到期通知點擊而來)
   const params = new URLSearchParams(window.location.search)
-  if (params.get('action') === 'unlock') {
+  if (params.get('action') === 'unlock' && isAdEnabled('unlock')) {
     setTimeout(async () => {
       const success = await showRealAd({ type: 'unlock' })
       if (success) {

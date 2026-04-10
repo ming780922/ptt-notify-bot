@@ -137,6 +137,14 @@ function canExtend(adUnlockedAt: number): boolean {
   return adUnlockedAt > now && adUnlockedAt - now <= CONFIG.AD_UNLOCK_DURATION
 }
 
+function getAdFlags(env: Env) {
+  return {
+    addBoard:   env.AD_ENABLED_ADD_BOARD   === 'true',
+    addKeyword: env.AD_ENABLED_ADD_KEYWORD === 'true',
+    unlock:     env.AD_ENABLED_UNLOCK      === 'true',
+  }
+}
+
 // ─── API handlers ──────────────────────────────────────────────────────────────
 
 async function handleGetUser(env: Env, telegramId: number): Promise<Response> {
@@ -144,14 +152,20 @@ async function handleGetUser(env: Env, telegramId: number): Promise<Response> {
   if (!user) return error('User not found', 404)
 
   const subscription_count = await getSubscriptionCount(env.DB, telegramId)
+  const flags = getAdFlags(env)
 
   return json({
     telegram_id: user.telegram_id,
     unlock_expires_at: user.ad_unlocked_at,
     expiry_notified: user.expiry_notified,
-    is_unlocked: isUnlocked(user.ad_unlocked_at),
-    can_extend: canExtend(user.ad_unlocked_at),
+    is_unlocked: !flags.unlock || isUnlocked(user.ad_unlocked_at),
+    can_extend: flags.unlock && canExtend(user.ad_unlocked_at),
     subscription_count,
+    ad_flags: {
+      add_board:   flags.addBoard,
+      add_keyword: flags.addKeyword,
+      unlock:      flags.unlock,
+    },
   })
 }
 
@@ -180,8 +194,10 @@ async function handleAddSubscription(
   await upsertBoard(env.DB, board, board, 1)
 
   // Enforce free tier limit: if count >= FREE_BOARDS_LIMIT and not unlocked → 402
+  // Skipped entirely when the add-board ad feature is disabled
   const count = await getSubscriptionCount(env.DB, telegramId)
-  if (count >= CONFIG.FREE_BOARDS_LIMIT) {
+  const adFlags = getAdFlags(env)
+  if (adFlags.addBoard && count >= CONFIG.FREE_BOARDS_LIMIT) {
     const user = await getUserById(env.DB, telegramId)
     if (!user || !isUnlocked(user.ad_unlocked_at)) {
       return error('AD_REQUIRED', 402)
@@ -322,6 +338,12 @@ async function handlePendingNotifications(env: Env): Promise<Response> {
     env.DB,
     CONFIG.NOTIFICATION_BATCH_SIZE
   )
+  // When unlock ad is disabled, force every user's ad_unlocked_at to far-future so
+  // notify.py sees is_unlocked=True and sends full notifications to all boards.
+  if (!getAdFlags(env).unlock) {
+    const FAR_FUTURE = 9_999_999_999
+    return json(notifications.map((n) => ({ ...n, ad_unlocked_at: FAR_FUTURE })))
+  }
   return json(notifications)
 }
 

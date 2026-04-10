@@ -6,6 +6,13 @@ compatibility_flags = ["nodejs_compat"]
 [observability]
 enabled = true
 
+[vars]
+# Ad feature toggles — set to "true" to enable the ad gate for each feature
+# "false" = feature is free (no ad required)
+AD_ENABLED_ADD_BOARD   = "false"
+AD_ENABLED_ADD_KEYWORD = "false"
+AD_ENABLED_UNLOCK      = "false"
+
 [[d1_databases]]
 binding = "DB"
 database_name = "ptt-notify-bot-db"
