@@ -106,15 +106,6 @@ export default function Page() {
     await Promise.all([loadUser(), loadSubscriptions()])
   }, [loadUser, loadSubscriptions])
 
-  // ── Closing confirmation — enable when user has subscriptions ─────────────
-  useEffect(() => {
-    if (!booted) return
-    const tg = window.Telegram?.WebApp
-    if (!tg) return
-    if (subscriptions.length > 0) tg.enableClosingConfirmation?.()
-    else tg.disableClosingConfirmation?.()
-  }, [booted, subscriptions.length])
-
   // ── Boot ──────────────────────────────────────────────────────────────────
 
   useEffect(() => {
