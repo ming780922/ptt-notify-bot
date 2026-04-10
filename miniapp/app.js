@@ -145,7 +145,6 @@ function renderSubscriptions() {
     bar.classList.add('hidden')
     list.innerHTML = `
       <div class="onboarding">
-        <div class="onboarding-icon">🐧</div>
         <div class="onboarding-title">開始訂閱 PTT 看板</div>
         <div class="onboarding-desc">訂閱後，有新文章時會立即透過 Telegram 通知你</div>
         <button class="onboarding-cta" id="onboarding-add">＋ 新增第一個看板</button>
@@ -469,7 +468,7 @@ function renderKeywords() {
     limitInfo.textContent = `已達上限（${MAX_KEYWORDS_PER_BOARD} 個）`
   } else {
     addRow.classList.remove('hidden')
-    limitInfo.textContent = count >= FREE_KEYWORDS_PER_BOARD
+    limitInfo.textContent = (count >= FREE_KEYWORDS_PER_BOARD && isAdEnabled('add_keyword'))
       ? `${count} / ${MAX_KEYWORDS_PER_BOARD} 個關鍵字（新增需觀看廣告）`
       : ''
   }
