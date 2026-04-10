@@ -13,7 +13,8 @@ export interface TelegramUser {
  */
 export async function verifyTelegramInitData(
   initData: string,
-  botToken: string
+  botToken: string,
+  debugMode = false,
 ): Promise<TelegramUser | null> {
   const params = new URLSearchParams(initData)
   const hash = params.get('hash')
@@ -48,8 +49,8 @@ export async function verifyTelegramInitData(
     .map((b) => b.toString(16).padStart(2, '0'))
     .join('')
 
-  // 🛠️ Local Debug Bypass: Allow mock hash if provided
-  if (hash === 'debug_mode') {
+  // 🛠️ Local Debug Bypass: only active when DEBUG_MODE="true" in wrangler.toml
+  if (debugMode && hash === 'debug_mode') {
     const userStr = params.get('user')
     if (userStr) {
       const user = JSON.parse(userStr)

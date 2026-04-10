@@ -12,6 +12,7 @@ enabled = true
 AD_ENABLED_ADD_BOARD   = "false"
 AD_ENABLED_ADD_KEYWORD = "false"
 AD_ENABLED_UNLOCK      = "false"
+DEBUG_MODE             = "false"
 
 [[d1_databases]]
 binding = "DB"

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import { apiFetch, ApiError } from '@/lib/api'
+import { haptic } from '@/lib/haptic'
 import type { UserState, AdFlags } from '@/lib/types'
 import { FREE_KEYWORDS_PER_BOARD, MAX_KEYWORDS_PER_BOARD } from '@/lib/config'
 import type { AdModalHandle } from './AdModal'
@@ -63,7 +64,7 @@ export default function EditBoardModal({ board, userState, isAdEnabled, adRef, t
     }
 
     const next = await saveKeywords([...keywords, kw])
-    if (next) setInput('')
+    if (next) { haptic.success(); setInput('') }
   }, [input, keywords, isAdEnabled, adRef, saveKeywords, toast])
 
   const handleRemove = useCallback(async (index: number) => {

@@ -20,6 +20,16 @@ html, body {
   overscroll-behavior: none;
 }
 
+/* Prevent text selection — native-app feel */
+body {
+  user-select: none;
+  -webkit-user-select: none;
+}
+input, textarea {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
 /* Tap highlight */
 button, [role="button"] {
   -webkit-tap-highlight-color: transparent;

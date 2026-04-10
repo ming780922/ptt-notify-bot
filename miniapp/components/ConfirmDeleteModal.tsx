@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { haptic } from '@/lib/haptic'
 import ModalSheet from './ModalSheet'
 
 interface Props {
@@ -13,6 +14,7 @@ export default function ConfirmDeleteModal({ board, onCancel, onConfirm }: Props
   const [loading, setLoading] = useState(false)
 
   const handleConfirm = async () => {
+    haptic.warning()
     setLoading(true)
     await onConfirm(board)
     setLoading(false)

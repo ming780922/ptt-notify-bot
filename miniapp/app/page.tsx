@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { setInitData, apiFetch, ApiError } from '@/lib/api'
+import { haptic } from '@/lib/haptic'
 import type { UserState, SubscriptionWithRank } from '@/lib/types'
 import SubscriptionList from '@/components/SubscriptionList'
 import AddBoardModal from '@/components/AddBoardModal'
@@ -22,6 +23,18 @@ declare global {
     close(): void
     initData: string
     showPopup(params: object, callback?: () => void): void
+    enableClosingConfirmation?(): void
+    disableClosingConfirmation?(): void
+    BackButton: {
+      show(): void
+      hide(): void
+      onClick(fn: () => void): void
+      offClick(fn: () => void): void
+    }
+    HapticFeedback: {
+      notificationOccurred(type: 'success' | 'warning' | 'error'): void
+      impactOccurred(style: 'light' | 'medium' | 'heavy' | 'rigid' | 'soft'): void
+    }
   }
 }
 
@@ -41,6 +54,31 @@ export default function Page() {
   const isAdEnabled = useCallback((feature: keyof UserState['ad_flags']) => {
     return userState?.ad_flags?.[feature] === true
   }, [userState])
+
+  // ── BackButton — close topmost modal on native back gesture ─────────────
+  useEffect(() => {
+    if (!booted) return
+    const tg = window.Telegram?.WebApp
+    if (!tg?.BackButton) return
+
+    const anyOpen = addOpen || !!editBoard || !!confirmBoard
+    if (anyOpen) {
+      tg.BackButton.show()
+      const handler = () => {
+        haptic.tap()
+        if (confirmBoard) setConfirmBoard(null)
+        else if (editBoard) setEditBoard(null)
+        else setAddOpen(false)
+      }
+      tg.BackButton.onClick(handler)
+      return () => {
+        tg.BackButton.offClick(handler)
+        tg.BackButton.hide()
+      }
+    } else {
+      tg.BackButton.hide()
+    }
+  }, [booted, addOpen, editBoard, confirmBoard])
 
   // ── Data loading ──────────────────────────────────────────────────────────
 
@@ -67,6 +105,15 @@ export default function Page() {
   const refresh = useCallback(async () => {
     await Promise.all([loadUser(), loadSubscriptions()])
   }, [loadUser, loadSubscriptions])
+
+  // ── Closing confirmation — enable when user has subscriptions ─────────────
+  useEffect(() => {
+    if (!booted) return
+    const tg = window.Telegram?.WebApp
+    if (!tg) return
+    if (subscriptions.length > 0) tg.enableClosingConfirmation?.()
+    else tg.disableClosingConfirmation?.()
+  }, [booted, subscriptions.length])
 
   // ── Boot ──────────────────────────────────────────────────────────────────
 
@@ -122,6 +169,7 @@ export default function Page() {
         method: 'POST',
         body: JSON.stringify({ board }),
       })
+      haptic.success()
       setAddOpen(false)
       toast(`✅ 已訂閱 ${board}`)
       await refresh()
@@ -138,6 +186,7 @@ export default function Page() {
   const handleDeleteBoard = useCallback(async (board: string) => {
     try {
       await apiFetch(`/api/subscriptions/${encodeURIComponent(board)}`, { method: 'DELETE' })
+      haptic.success()
       setConfirmBoard(null)
       setEditBoard(null)
       toast(`已取消訂閱 ${board}`)

@@ -118,7 +118,7 @@ async function authenticateTelegram(
   }
 
   const initData = authHeader.slice(4)
-  const tgUser = await verifyTelegramInitData(initData, env.BOT_TOKEN)
+  const tgUser = await verifyTelegramInitData(initData, env.BOT_TOKEN, env.DEBUG_MODE === 'true')
   if (!tgUser) {
     console.error('[auth] verification failed for initData')
     return error('Unauthorized', 401)
