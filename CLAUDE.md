@@ -5,18 +5,23 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## 專案概覽
 
 PTT 通知機器人：用戶訂閱 PTT 看板後，有新文章時透過 Telegram 主動推送通知。
-架構：兩個 Cloudflare Workers + D1 資料庫 + Python 爬蟲（跑在 GitHub Actions）+ Telegram Mini App。
+架構：兩個 Cloudflare Workers + D1 資料庫 + Python 爬蟲（跑在 GitHub Actions）+ Telegram Mini App（Next.js）。
 
 ## 常用指令
 
 ```bash
-# 開發
+# Workers 開發
 cd workers/bot && npm run dev        # Bot Worker 本地 server
 cd workers/api && npm run dev        # API Worker 本地 server
 
-# TypeScript 型別檢查（兩個 worker 各自執行）
+# TypeScript 型別檢查
 cd workers/bot && npm run typecheck
 cd workers/api && npm run typecheck
+
+# Mini App 開發（Next.js）
+cd miniapp && npm run dev            # 本地開發 server（localhost:3000）
+cd miniapp && npm run build          # 靜態輸出至 miniapp/out/
+cd miniapp && npm run typecheck      # 型別檢查
 
 # D1 本地初始化
 cd workers/bot
@@ -25,7 +30,7 @@ npx wrangler d1 execute ptt-notify-bot-db --local --file=src/db/schema.sql
 # 部署
 cd workers/bot && npx wrangler deploy
 cd workers/api && npx wrangler deploy
-cd miniapp && npx wrangler pages deploy . --project-name ptt-miniapp
+cd miniapp && npm run build && npx wrangler pages deploy out --project-name ptt-notify-miniapp
 
 # D1 schema 套用到正式環境
 cd workers/bot
@@ -74,9 +79,52 @@ npx wrangler d1 execute ptt-notify-bot-db --remote --file=src/db/schema.sql
 
 ### Notification 三層邏輯
 
-1. `board_rank <= FREE_BOARDS_LIMIT`（≤2）：完整通知
-2. `board_rank > 2` 且 `is_unlocked`（`ad_unlocked_at + 86400 > now`）：完整通知 + 延長解鎖按鈕
-3. `board_rank > 2` 未解鎖：隱藏通知；`expiry_notified = 0` 時額外發一則到期提醒
+受 `AD_ENABLED_UNLOCK` env var 控制：
+
+- **`AD_ENABLED_UNLOCK = "false"`（預設）**：所有看板一律完整通知，不受 `board_rank` 限制
+- **`AD_ENABLED_UNLOCK = "true"`**：
+  1. `board_rank <= FREE_BOARDS_LIMIT`（≤2）：完整通知
+  2. `board_rank > 2` 且 `is_unlocked`：完整通知
+  3. `board_rank > 2` 未解鎖：隱藏通知；`expiry_notified = 0` 時額外發一則到期提醒
+
+### Mini App 架構（`miniapp/`）
+
+Next.js 15 靜態匯出（`output: 'export'`），部署至 Cloudflare Pages。
+
+```
+miniapp/
+  app/
+    layout.tsx          載入 Telegram SDK、Monetag SDK
+    page.tsx            boot 邏輯、全域狀態、BackButton / HapticFeedback / closing confirmation
+    globals.css         Tailwind base + Telegram CSS var 整合
+  components/
+    ModalSheet.tsx      可複用 slide-up 底部 sheet
+    SubscriptionList.tsx  空白引導 + 訂閱卡片列表
+    AddBoardModal.tsx   搜尋 + 熱門看板格狀選擇
+    EditBoardModal.tsx  關鍵字管理（樂觀更新）
+    ConfirmDeleteModal.tsx
+    AdModal.tsx         確認 → 真實廣告 → 倒數 fallback
+    UnlockBar.tsx       解鎖狀態列（僅在 AD_ENABLED_UNLOCK=true 時顯示）
+    Toast.tsx           命令式 ref 觸發的疊加 toast
+  lib/
+    api.ts              apiFetch wrapper + ApiError
+    config.ts           API_BASE + 免費額度常數
+    haptic.ts           HapticFeedback thin wrapper
+    types.ts            UserState、SubscriptionWithRank、Board、AdFlags
+  public/
+    _headers            Cloudflare Pages 快取規則
+```
+
+### 廣告功能開關（`workers/api/wrangler.toml [vars]`）
+
+| env var | 預設 | 說明 |
+|---------|------|------|
+| `AD_ENABLED_ADD_BOARD` | `"false"` | 新增超出免費額度的看板需看廣告 |
+| `AD_ENABLED_ADD_KEYWORD` | `"false"` | 新增超出免費額度的關鍵字需看廣告 |
+| `AD_ENABLED_UNLOCK` | `"false"` | 完整通知需看廣告解鎖 |
+| `DEBUG_MODE` | `"false"` | 允許 `hash=debug_mode` 繞過 initData 驗證（僅本地開發用）|
+
+變更後重新部署 API Worker 即生效，無需異動資料庫。
 
 ### 可調整常數（`workers/shared/config.ts`）
 
@@ -123,7 +171,7 @@ npx wrangler secret put INTERNAL_SECRET
 | `INTERNAL_SECRET` | 與 wrangler secret 相同 |
 | `TELEGRAM_BOT_TOKEN` | Telegram Bot Token |
 | `MINIAPP_URL` | Mini App URL |
-| `CLOUDFLARE_API_TOKEN` | 用於 deploy-bot/api workflow |
+| `CLOUDFLARE_API_TOKEN` | 用於 deploy-bot/api/miniapp workflow |
 
 ## 設定 Telegram Webhook
 
@@ -140,9 +188,16 @@ start - 開啟管理介面
 feedback - 提供意見回饋
 ```
 
+## 本地開發注意事項
+
+### API Worker 本地 debug
+在 `workers/api/wrangler.toml` 暫時設定 `DEBUG_MODE = "true"`，Mini App 前端即可用 `hash=debug_mode` 繞過 initData 驗證。**勿 commit 此值為 `"true"`**。
+
+### Mini App 本地開發
+`miniapp/lib/api.ts` 的 `API_BASE` 固定指向正式 API Worker。若要打本地 API，暫時改為 `http://localhost:8787`。
+
 ## 已知限制
 
-- **關鍵字過濾**：`subscription_filters` 表已建立，Mini App 顯示「即將推出」，功能尚未實作
-- **廣告 Mock**：`POST /api/ad/complete` 直接解鎖，尚未串接 Monetag SDK
+- **廣告 SDK**：`POST /api/ad/complete` 目前直接解鎖，尚未完整串接 Monetag SDK 的服務端驗證
 - **PTT 反爬**：`crawler.py` 無 retry / rate-limit，高頻呼叫可能被封
 - **MAX_CRAWL_WORKERS = 1**：調整時需同步修改 Bot Worker Cron 邏輯
