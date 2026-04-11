@@ -3,7 +3,7 @@ import Script from 'next/script'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'PTT 通知訂閱',
+  title: 'PTT通知機器人',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
