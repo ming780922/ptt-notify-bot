@@ -5,7 +5,7 @@ import { apiFetch } from '@/lib/api'
 
 interface Props {
   onClose():          void
-  toast(msg: string): void
+  toast(msg: string, type?: 'success' | 'error'): void
 }
 
 export default function FeedbackScreen({ onClose, toast }: Props) {
@@ -24,7 +24,7 @@ export default function FeedbackScreen({ onClose, toast }: Props) {
       setText('')
       onClose()
     } catch {
-      toast('送出失敗，請稍後再試')
+      toast('送出失敗，請稍後再試', 'error')
     } finally {
       setSubmitting(false)
     }

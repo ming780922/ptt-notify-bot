@@ -8,7 +8,7 @@ import { MAX_KEYWORDS_PER_BOARD } from '@/lib/config'
 interface Props {
   board:                string
   initialKeywords:      string[]
-  toast(msg: string):   void
+  toast(msg: string, type?: 'success' | 'error'): void
   onClose():            void
   onSave():             void
   onDelete(b: string):  void
@@ -17,6 +17,7 @@ interface Props {
 export default function EditBoardModal({ board, initialKeywords, toast, onClose, onSave, onDelete }: Props) {
   const [keywords, setKeywords]             = useState<string[]>(initialKeywords)
   const [input, setInput]                   = useState('')
+  const [kwError, setKwError]               = useState('')
   const [saving, setSaving]                 = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
 
@@ -29,7 +30,7 @@ export default function EditBoardModal({ board, initialKeywords, toast, onClose,
   const handleAdd = useCallback(() => {
     const kw = input.trim()
     if (!kw) return
-    if (keywords.includes(kw)) { toast('關鍵字已存在'); return }
+    if (keywords.includes(kw)) { setKwError('關鍵字已存在'); return }
     if (keywords.length >= MAX_KEYWORDS_PER_BOARD) return
     setKeywords((prev) => [...prev, kw])
     setInput('')
@@ -52,7 +53,7 @@ export default function EditBoardModal({ board, initialKeywords, toast, onClose,
       haptic.success()
       onSave()
     } catch {
-      toast('儲存失敗，請稍後再試')
+      toast('儲存失敗，請稍後再試', 'error')
     } finally {
       setSaving(false)
     }
@@ -116,7 +117,7 @@ export default function EditBoardModal({ board, initialKeywords, toast, onClose,
               <input
                 ref={inputRef}
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
+                onChange={(e) => { setInput(e.target.value); setKwError('') }}
                 onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAdd() } }}
                 placeholder="輸入關鍵字…"
                 maxLength={20}
@@ -131,6 +132,8 @@ export default function EditBoardModal({ board, initialKeywords, toast, onClose,
               </button>
             </div>
           )}
+
+          {kwError && <p className="text-xs text-red-400 mt-1">{kwError}</p>}
 
           {keywords.length >= MAX_KEYWORDS_PER_BOARD && (
             <p className="text-xs text-tg-hint mt-1">已達上限（{MAX_KEYWORDS_PER_BOARD} 個）</p>

@@ -25,8 +25,8 @@ const config: Config = {
         'ad-pop':   { from: { transform: 'scale(0.92)', opacity: '0' }, to: { transform: 'scale(1)', opacity: '1' } },
         spin:       { to: { transform: 'rotate(360deg)' } },
         'toast-in': {
-          from: { opacity: '0', transform: 'translate(-50%, calc(-50% + 8px))' },
-          to:   { opacity: '1', transform: 'translate(-50%, -50%)' },
+          from: { opacity: '0', transform: 'translateY(8px)' },
+          to:   { opacity: '1', transform: 'translateY(0)' },
         },
       },
       animation: {

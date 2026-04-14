@@ -44,7 +44,7 @@ export default function Page() {
   const [booted, setBooted]             = useState(false)
 
   const toastRef = useRef<ToastHandle>(null)
-  const toast = useCallback((msg: string) => toastRef.current?.show(msg), [])
+  const toast = useCallback((msg: string, type?: 'success' | 'error') => toastRef.current?.show(msg, type), [])
 
   // ── BackButton — close topmost layer on native back gesture ──────────────
   useEffect(() => {
@@ -114,8 +114,8 @@ export default function Page() {
       toast(`已訂閱 ${board}`)
       await loadSubscriptions()
     } catch (err) {
-      if (err instanceof ApiError && err.status === 404) toast(`找不到看板「${board}」`)
-      else toast('新增失敗，請稍後再試')
+      if (err instanceof ApiError && err.status === 404) toast(`找不到看板「${board}」`, 'error')
+      else toast('新增失敗，請稍後再試', 'error')
     }
   }, [loadSubscriptions, toast])
 
@@ -140,7 +140,7 @@ export default function Page() {
     } catch {
       setSubs(snapshot)
       setModal({ mode: 'edit', board })
-      toast('刪除失敗，請稍後再試')
+      toast('刪除失敗，請稍後再試', 'error')
     }
   }, [subscriptions, toast])
 
