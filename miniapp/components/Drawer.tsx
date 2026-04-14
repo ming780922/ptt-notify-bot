@@ -1,7 +1,5 @@
 'use client'
 
-import pkg from '../package.json'
-
 interface Props {
   open:          boolean
   onClose():     void
@@ -41,7 +39,9 @@ export default function Drawer({ open, onClose, onFeedback }: Props) {
         </div>
 
         {/* Version */}
-        <p className="text-tg-hint text-xs px-5 mt-auto pb-8">v{pkg.version}</p>
+        <p className="text-tg-hint text-xs px-5 mt-auto pb-8">
+          #{process.env.NEXT_PUBLIC_COMMIT_SHA?.slice(0, 7) ?? 'dev'}
+        </p>
       </div>
     </div>
   )

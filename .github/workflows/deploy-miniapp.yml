@@ -26,6 +26,8 @@ jobs:
       - name: Build
         run: npm run build
         working-directory: miniapp
+        env:
+          NEXT_PUBLIC_COMMIT_SHA: ${{ github.sha }}
 
       - name: Deploy to Cloudflare Pages
         env:
@@ -33,3 +35,17 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: 4b4513475f5ee541622faacd26d279a6
         run: npx wrangler pages deploy out --project-name ptt-notify-miniapp
         working-directory: miniapp
+
+      - name: Install bot worker deps
+        working-directory: workers/bot
+        run: npm ci
+
+      - name: Update bot MINIAPP_URL and redeploy
+        working-directory: workers/bot
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: 4b4513475f5ee541622faacd26d279a6
+        run: |
+          SHORT_SHA="${GITHUB_SHA::7}"
+          echo "https://ptt-notify-miniapp.pages.dev?v=${SHORT_SHA}" | npx wrangler secret put MINIAPP_URL
+          npx wrangler deploy
