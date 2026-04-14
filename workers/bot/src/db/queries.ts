@@ -165,6 +165,13 @@ export async function getPopularBoards(db: D1Database): Promise<Board[]> {
   return result.results
 }
 
+export async function getAllBoards(db: D1Database): Promise<Board[]> {
+  const result = await db
+    .prepare('SELECT * FROM boards ORDER BY is_popular DESC, name ASC')
+    .all<Board>()
+  return result.results
+}
+
 export async function searchBoards(db: D1Database, query: string): Promise<Board[]> {
   const result = await db
     .prepare(

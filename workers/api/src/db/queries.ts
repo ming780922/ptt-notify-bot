@@ -10,6 +10,7 @@ export {
   getSubscriptionFilter,
   updateSubscriptionFilter,
   getPopularBoards,
+  getAllBoards,
   searchBoards,
   upsertBoard,
   updateBoardSnapshot,

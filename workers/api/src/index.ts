@@ -13,7 +13,7 @@ import {
   createSubscriptionFilter,
   getSubscriptionFilter,
   updateSubscriptionFilter,
-  getPopularBoards,
+  getAllBoards,
   searchBoards,
   upsertBoard,
   updateBoardSnapshot,
@@ -199,14 +199,14 @@ async function handleDeleteSubscription(
 }
 
 async function handlePopularBoards(env: Env): Promise<Response> {
-  console.log('[api] handlePopularBoards: Fetching popular boards from D1...')
+  console.log('[api] handlePopularBoards: Fetching all boards from D1...')
   try {
-    const boards = await getPopularBoards(env.DB)
-    console.log(`[api] handlePopularBoards: Found ${boards.length} popular boards`)
+    const boards = await getAllBoards(env.DB)
+    console.log(`[api] handlePopularBoards: Found ${boards.length} boards`)
     return json(boards)
   } catch (err) {
     console.error('[api] handlePopularBoards: Error querying D1:', err)
-    return error('Database error while fetching popular boards', 500)
+    return error('Database error while fetching boards', 500)
   }
 }
 

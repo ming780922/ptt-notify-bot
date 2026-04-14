@@ -12,7 +12,7 @@ interface Props {
 }
 
 export default function AddBoardModal({ subscriptions, onClose, onAdd }: Props) {
-  const [popular, setPopular]             = useState<Board[]>([])
+  const [allBoards, setAllBoards]         = useState<Board[]>([])
   const [query, setQuery]                 = useState('')
   const [selectedBoard, setSelectedBoard] = useState<string | null>(null)
   const [keywords, setKeywords]           = useState<string[]>([])
@@ -27,16 +27,20 @@ export default function AddBoardModal({ subscriptions, onClose, onAdd }: Props) 
   const subSet = new Set(subscriptions.map((s) => s.board.toLowerCase()))
 
   useEffect(() => {
-    apiFetch<Board[]>('/api/boards/popular').then(setPopular).catch(() => {})
+    apiFetch<Board[]>('/api/boards/popular').then(setAllBoards).catch(() => {})
     setTimeout(() => searchRef.current?.focus(), 100)
   }, [])
 
   // ── Board list ─────────────────────────────────────────────────────────────
 
-  const filteredPopular = popular.filter(
-    (b) => !subSet.has(b.name.toLowerCase()) && b.name.toLowerCase().includes(query.toLowerCase())
+  const filteredBoards = allBoards.filter(
+    (b) =>
+      !subSet.has(b.name.toLowerCase()) &&
+      (query.trim().length === 0
+        ? b.is_popular === 1
+        : b.name.toLowerCase().includes(query.toLowerCase()))
   )
-  const showNoResults = query.trim().length > 0 && filteredPopular.length === 0 && !selectedBoard
+  const showNoResults = query.trim().length > 0 && filteredBoards.length === 0 && !selectedBoard
 
   // Reset not-found state whenever the query changes
   useEffect(() => { setNotFound(false) }, [query])
@@ -145,7 +149,7 @@ export default function AddBoardModal({ subscriptions, onClose, onAdd }: Props) 
             )}
 
             <div className="flex flex-col gap-1.5 max-h-56 overflow-y-auto">
-              {filteredPopular.map((b) => (
+              {filteredBoards.map((b) => (
                 <button
                   key={b.name}
                   onClick={() => handleSelectBoard(b.name)}
