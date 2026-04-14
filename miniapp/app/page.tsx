@@ -3,28 +3,25 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { setInitData, apiFetch, ApiError } from '@/lib/api'
 import { haptic } from '@/lib/haptic'
-import type { UserState, SubscriptionWithRank } from '@/lib/types'
+import type { SubscriptionWithRank } from '@/lib/types'
 import SubscriptionList from '@/components/SubscriptionList'
 import AddBoardModal from '@/components/AddBoardModal'
 import EditBoardModal from '@/components/EditBoardModal'
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal'
-import AdModal, { type AdContext, type AdModalHandle } from '@/components/AdModal'
-import UnlockBar from '@/components/UnlockBar'
+import Drawer from '@/components/Drawer'
+import FeedbackScreen from '@/components/FeedbackScreen'
 import Toast, { type ToastHandle } from '@/components/Toast'
 
 declare global {
   interface Window {
     Telegram: { WebApp: TelegramWebApp }
-    show_10832818?: () => Promise<void>
   }
   interface TelegramWebApp {
     ready(): void
     expand(): void
     close(): void
     initData: string
-    showPopup(params: object, callback?: () => void): void
-    enableClosingConfirmation?(): void
-    disableClosingConfirmation?(): void
+    version: string
     BackButton: {
       show(): void
       hide(): void
@@ -39,36 +36,33 @@ declare global {
 }
 
 export default function Page() {
-  const [userState, setUserState]       = useState<UserState | null>(null)
+  type ModalState = { mode: 'create' } | { mode: 'edit'; board: string }
+
   const [subscriptions, setSubs]        = useState<SubscriptionWithRank[]>([])
-  const [addOpen, setAddOpen]           = useState(false)
-  const [editBoard, setEditBoard]       = useState<string | null>(null)
+  const [modal, setModal]               = useState<ModalState | null>(null)
   const [confirmBoard, setConfirmBoard] = useState<string | null>(null)
+  const [drawerOpen, setDrawerOpen]     = useState(false)
+  const [feedbackOpen, setFeedbackOpen] = useState(false)
   const [booted, setBooted]             = useState(false)
 
-  const adRef   = useRef<AdModalHandle>(null)
   const toastRef = useRef<ToastHandle>(null)
-
   const toast = useCallback((msg: string) => toastRef.current?.show(msg), [])
 
-  const isAdEnabled = useCallback((feature: keyof UserState['ad_flags']) => {
-    return userState?.ad_flags?.[feature] === true
-  }, [userState])
-
-  // ── BackButton — close topmost modal on native back gesture ─────────────
+  // ── BackButton — close topmost layer on native back gesture ──────────────
   useEffect(() => {
     if (!booted) return
     const tg = window.Telegram?.WebApp
     if (!tg?.BackButton) return
 
-    const anyOpen = addOpen || !!editBoard || !!confirmBoard
+    const anyOpen = !!modal || !!confirmBoard || feedbackOpen || drawerOpen
     if (anyOpen) {
       tg.BackButton.show()
       const handler = () => {
         haptic.tap()
-        if (confirmBoard) setConfirmBoard(null)
-        else if (editBoard) setEditBoard(null)
-        else setAddOpen(false)
+        if (drawerOpen)       setDrawerOpen(false)
+        else if (feedbackOpen) setFeedbackOpen(false)
+        else if (confirmBoard) setConfirmBoard(null)
+        else                   setModal(null)
       }
       tg.BackButton.onClick(handler)
       return () => {
@@ -78,20 +72,9 @@ export default function Page() {
     } else {
       tg.BackButton.hide()
     }
-  }, [booted, addOpen, editBoard, confirmBoard])
+  }, [booted, modal, confirmBoard, feedbackOpen, drawerOpen])
 
   // ── Data loading ──────────────────────────────────────────────────────────
-
-  const loadUser = useCallback(async () => {
-    try {
-      const u = await apiFetch<UserState>('/api/user')
-      setUserState(u)
-      return u
-    } catch {
-      setUserState(null)
-      return null
-    }
-  }, [])
 
   const loadSubscriptions = useCallback(async () => {
     try {
@@ -102,75 +85,50 @@ export default function Page() {
     }
   }, [])
 
-  const refresh = useCallback(async () => {
-    await Promise.all([loadUser(), loadSubscriptions()])
-  }, [loadUser, loadSubscriptions])
-
   // ── Boot ──────────────────────────────────────────────────────────────────
 
   useEffect(() => {
     const tg = window.Telegram?.WebApp
     if (!tg) return
 
-    if (!tg.initData) {
-      // Local dev mock
-      Object.defineProperty(tg, 'initData', {
-        value: 'user=%7B%22id%22%3A12345678%7D&hash=debug_mode',
-        writable: true,
-      })
+    const initDataValue = tg.initData || 'user=%7B%22id%22%3A12345678%7D&hash=debug_mode'
+    setInitData(initDataValue)
+
+    if (!tg.initData && tg.version === '6.0') {
+      try { Object.defineProperty(tg, 'version', { value: '8.0', configurable: true }) } catch { /* ignore */ }
     }
 
-    setInitData(tg.initData)
     tg.ready()
     tg.expand()
 
-    refresh().then(async () => {
-      setBooted(true)
-      const params = new URLSearchParams(window.location.search)
-      if (params.get('action') === 'unlock') {
-        const latestUser = await loadUser()
-        if (latestUser?.ad_flags?.unlock) {
-          setTimeout(() => {
-            adRef.current?.show({ type: 'unlock' })
-          }, 500)
-        }
-      }
-    })
+    loadSubscriptions().then(() => setBooted(true))
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── Ad helpers ────────────────────────────────────────────────────────────
-
-  const handleUnlockComplete = useCallback(async () => {
-    await loadUser()
-    window.history.replaceState({}, document.title, window.location.pathname)
-  }, [loadUser])
 
   // ── Add board ─────────────────────────────────────────────────────────────
 
-  const handleAddBoard = useCallback(async (board: string) => {
-    const count = userState?.subscription_count ?? subscriptions.length
-
-    if (isAdEnabled('add_board') && count >= (userState ? 2 : 2)) {
-      const ok = await adRef.current?.show({ type: 'add-board', board })
-      if (!ok) return
-    }
-
+  const handleAdd = useCallback(async (board: string, keywords: string[]) => {
     try {
       await apiFetch('/api/subscriptions', {
         method: 'POST',
-        body: JSON.stringify({ board }),
+        body: JSON.stringify({ board, keywords }),
       })
       haptic.success()
-      setAddOpen(false)
-      toast(`✅ 已訂閱 ${board}`)
-      await refresh()
+      setModal(null)
+      toast(`已訂閱 ${board}`)
+      await loadSubscriptions()
     } catch (err) {
-      setAddOpen(false)
-      if (err instanceof ApiError && err.status === 402) toast('請先解鎖進階功能')
-      else if (err instanceof ApiError && err.status === 404) toast(`找不到看板「${board}」`)
+      if (err instanceof ApiError && err.status === 404) toast(`找不到看板「${board}」`)
       else toast('新增失敗，請稍後再試')
     }
-  }, [userState, subscriptions.length, isAdEnabled, refresh, toast])
+  }, [loadSubscriptions, toast])
+
+  // ── Edit board (save callback) ────────────────────────────────────────────
+
+  const handleEditSave = useCallback(async () => {
+    setModal(null)
+    toast('已儲存')
+    await loadSubscriptions()
+  }, [loadSubscriptions, toast])
 
   // ── Delete board ──────────────────────────────────────────────────────────
 
@@ -179,13 +137,15 @@ export default function Page() {
       await apiFetch(`/api/subscriptions/${encodeURIComponent(board)}`, { method: 'DELETE' })
       haptic.success()
       setConfirmBoard(null)
-      setEditBoard(null)
+      setModal(null)
       toast(`已取消訂閱 ${board}`)
-      await refresh()
+      await loadSubscriptions()
     } catch {
       toast('刪除失敗，請稍後再試')
     }
-  }, [refresh, toast])
+  }, [loadSubscriptions, toast])
+
+  // ── Render ────────────────────────────────────────────────────────────────
 
   if (!booted) {
     return (
@@ -196,75 +156,75 @@ export default function Page() {
   }
 
   return (
-    <div className="bg-tg-bg min-h-screen">
-      {/* Scrollable content area */}
-      <div
-        className="px-4 pt-4"
-        style={{ paddingBottom: `calc(var(--bar-height) + var(--unlock-bar-height) + 24px)` }}
+    <div className="relative bg-tg-bg min-h-screen">
+      {/* Hamburger button */}
+      <button
+        onClick={() => setDrawerOpen(true)}
+        className="absolute top-4 left-4 z-10 p-1 text-tg-hint active:opacity-60 transition-opacity"
+        aria-label="選單"
       >
+        <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+          <line x1="2" y1="5"  x2="20" y2="5"  />
+          <line x1="2" y1="11" x2="20" y2="11" />
+          <line x1="2" y1="17" x2="20" y2="17" />
+        </svg>
+      </button>
+
+      {/* Main content */}
+      <div className="px-4 pt-4 pb-28">
         <SubscriptionList
           subscriptions={subscriptions}
-          userState={userState}
-          onEdit={setEditBoard}
-          onAdd={() => setAddOpen(true)}
+          onEdit={(board) => { haptic.tap(); setModal({ mode: 'edit', board }) }}
+          onAdd={() => setModal({ mode: 'create' })}
         />
       </div>
 
-      {/* Bottom bar */}
+      {/* FAB — only when subscriptions exist */}
       {subscriptions.length > 0 && (
-        <div className="fixed bottom-0 inset-x-0 bg-tg-bg border-t border-tg-hint/20 flex flex-col gap-2 px-4 pt-2.5 pb-safe">
-          <UnlockBar
-            userState={userState}
-            isAdEnabled={isAdEnabled}
-            adRef={adRef}
-            onUnlockComplete={handleUnlockComplete}
-          />
-          <div className="flex gap-2.5">
-            <button
-              onClick={() => setAddOpen(true)}
-              className="flex-1 py-3 bg-tg-btn text-tg-btn-text font-semibold rounded-xl text-[15px] active:opacity-75 transition-opacity"
-            >
-              ＋ 新增看板
-            </button>
-            <button
-              onClick={() => {
-                window.Telegram.WebApp.showPopup({
-                  title: '意見回饋',
-                  message: '關閉後請在對話框輸入 /feedback 加上你的建議',
-                  buttons: [{ type: 'close', text: '知道了' }],
-                }, () => window.Telegram.WebApp.close())
-              }}
-              className="px-4 py-3 border border-tg-hint/30 text-tg-hint rounded-xl text-sm whitespace-nowrap active:opacity-75 transition-opacity"
-            >
-              💬 意見回饋
-            </button>
-          </div>
-        </div>
+        <button
+          onClick={() => setModal({ mode: 'create' })}
+          className="fixed bottom-6 right-4 w-14 h-14 rounded-full bg-tg-btn text-tg-btn-text shadow-lg flex items-center justify-center text-3xl font-light active:opacity-75 transition-opacity z-10"
+          style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)' }}
+        >
+          +
+        </button>
       )}
 
-      {/* Modals */}
-      <AddBoardModal
-        open={addOpen}
-        subscriptions={subscriptions}
-        onClose={() => setAddOpen(false)}
-        onAdd={handleAddBoard}
+      {/* Drawer */}
+      <Drawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        onFeedback={() => { setDrawerOpen(false); setFeedbackOpen(true) }}
       />
 
-      {editBoard && (
-        <EditBoardModal
-          board={editBoard}
-          userState={userState}
-          isAdEnabled={isAdEnabled}
-          adRef={adRef}
-          toast={toast}
-          onClose={() => setEditBoard(null)}
-          onDelete={(board) => {
-            setEditBoard(null)
-            setConfirmBoard(board)
-          }}
+      {/* Feedback screen */}
+      {feedbackOpen && (
+        <FeedbackScreen onClose={() => setFeedbackOpen(false)} toast={toast} />
+      )}
+
+      {/* Add modal */}
+      {modal?.mode === 'create' && (
+        <AddBoardModal
+          key="create"
+          subscriptions={subscriptions}
+          onClose={() => setModal(null)}
+          onAdd={handleAdd}
         />
       )}
 
+      {/* Edit modal */}
+      {modal?.mode === 'edit' && (
+        <EditBoardModal
+          key={`edit-${modal.board}`}
+          board={modal.board}
+          toast={toast}
+          onClose={() => setModal(null)}
+          onSave={handleEditSave}
+          onDelete={(board) => { setModal(null); setConfirmBoard(board) }}
+        />
+      )}
+
+      {/* Delete confirmation */}
       {confirmBoard && (
         <ConfirmDeleteModal
           board={confirmBoard}
@@ -273,7 +233,6 @@ export default function Page() {
         />
       )}
 
-      <AdModal ref={adRef} userState={userState} onComplete={handleUnlockComplete} />
       <Toast ref={toastRef} />
     </div>
   )

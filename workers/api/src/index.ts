@@ -5,7 +5,6 @@ import { verifyTelegramInitData } from './utils/auth'
 import { json, error, preflight } from './utils/cors'
 import {
   upsertUser,
-  getUserById,
   getSubscriptionsByUser,
   getSubscriptionCount,
   createSubscription,
@@ -91,8 +90,8 @@ export default {
         if (delMatch && method === 'DELETE') {
           return handleDeleteSubscription(env, tgUser.telegramId, decodeURIComponent(delMatch[1]))
         }
-        if (pathname === '/api/ad/complete' && method === 'POST') {
-          return handleAdComplete(env, tgUser.telegramId)
+        if (pathname === '/api/feedback' && method === 'POST') {
+          return handleFeedback(request, env, tgUser.telegramId)
         }
         return error('Not Found', 404)
       }
@@ -128,50 +127,22 @@ async function authenticateTelegram(
   return tgUser
 }
 
-function isUnlocked(adUnlockedAt: number): boolean {
-  return adUnlockedAt > Math.floor(Date.now() / 1000)
-}
-
-function canExtend(adUnlockedAt: number): boolean {
-  const now = Math.floor(Date.now() / 1000)
-  return adUnlockedAt > now && adUnlockedAt - now <= CONFIG.AD_UNLOCK_DURATION
-}
-
-function getAdFlags(env: Env) {
-  return {
-    addBoard:   env.AD_ENABLED_ADD_BOARD   === 'true',
-    addKeyword: env.AD_ENABLED_ADD_KEYWORD === 'true',
-    unlock:     env.AD_ENABLED_UNLOCK      === 'true',
-  }
-}
-
 // ─── API handlers ──────────────────────────────────────────────────────────────
 
 async function handleGetUser(env: Env, telegramId: number): Promise<Response> {
-  const user = await getUserById(env.DB, telegramId)
-  if (!user) return error('User not found', 404)
-
   const subscription_count = await getSubscriptionCount(env.DB, telegramId)
-  const flags = getAdFlags(env)
-
-  return json({
-    telegram_id: user.telegram_id,
-    unlock_expires_at: user.ad_unlocked_at,
-    expiry_notified: user.expiry_notified,
-    is_unlocked: !flags.unlock || isUnlocked(user.ad_unlocked_at),
-    can_extend: flags.unlock && canExtend(user.ad_unlocked_at),
-    subscription_count,
-    ad_flags: {
-      add_board:   flags.addBoard,
-      add_keyword: flags.addKeyword,
-      unlock:      flags.unlock,
-    },
-  })
+  return json({ telegram_id: telegramId, subscription_count })
 }
 
 async function handleGetSubscriptions(env: Env, telegramId: number): Promise<Response> {
   const subs = await getSubscriptionsByUser(env.DB, telegramId)
-  return json(subs)
+  const subsWithKeywords = await Promise.all(
+    subs.map(async (sub) => {
+      const keywords = await getSubscriptionFilter(env.DB, sub.id)
+      return { ...sub, keywords }
+    })
+  )
+  return json(subsWithKeywords)
 }
 
 async function handleAddSubscription(
@@ -179,9 +150,14 @@ async function handleAddSubscription(
   env: Env,
   telegramId: number
 ): Promise<Response> {
-  const body = await request.json<{ board?: string }>()
+  const body = await request.json<{ board?: string; keywords?: unknown }>()
   const board = body.board?.trim()
   if (!board) return error('board is required')
+
+  const keywords = Array.isArray(body.keywords)
+    ? (body.keywords as unknown[]).map((k) => String(k).trim()).filter((k) => k.length > 0)
+    : []
+  if (keywords.length > CONFIG.MAX_KEYWORDS_PER_BOARD) return error('Too many keywords', 400)
 
   // Check if board exists on PTT
   const boardExists = await checkPttBoard(board)
@@ -193,22 +169,17 @@ async function handleAddSubscription(
   // upsertBoard with is_verified = 1
   await upsertBoard(env.DB, board, board, 1)
 
-  // Enforce free tier limit: if count >= FREE_BOARDS_LIMIT and not unlocked → 402
-  // Skipped entirely when the add-board ad feature is disabled
-  const count = await getSubscriptionCount(env.DB, telegramId)
-  const adFlags = getAdFlags(env)
-  if (adFlags.addBoard && count >= CONFIG.FREE_BOARDS_LIMIT) {
-    const user = await getUserById(env.DB, telegramId)
-    if (!user || !isUnlocked(user.ad_unlocked_at)) {
-      return error('AD_REQUIRED', 402)
-    }
-  }
-
   await createSubscription(env.DB, telegramId, board)
 
-  // Ensure subscription_filters row exists
+  // Ensure subscription_filters row exists; save keywords if provided
   const sub = await getSubscriptionByUserAndBoard(env.DB, telegramId, board)
-  if (sub) await createSubscriptionFilter(env.DB, sub.id)
+  if (sub) {
+    if (keywords.length > 0) {
+      await updateSubscriptionFilter(env.DB, sub.id, keywords)
+    } else {
+      await createSubscriptionFilter(env.DB, sub.id)
+    }
+  }
 
   console.log(`[api] handleAddSubscription: Successfully subscribed to ${board} for ${telegramId}`)
 
@@ -299,26 +270,25 @@ async function handlePutKeywords(
   return json({ keywords })
 }
 
-async function handleAdComplete(env: Env, telegramId: number): Promise<Response> {
-  const now = Math.floor(Date.now() / 1000)
-  const user = await getUserById(env.DB, telegramId)
-  if (!user) return error('User not found', 404)
+async function handleFeedback(request: Request, env: Env, telegramId: number): Promise<Response> {
+  const body = await request.json<{ message?: string }>()
+  const message = body.message?.trim()
+  if (!message) return error('message is required', 400)
+  if (message.length > 500) return error('message too long', 400)
 
-  const currentExpiry = user.ad_unlocked_at
-  const isCurrentlyUnlocked = currentExpiry > now
-  const alreadyExtended = isCurrentlyUnlocked && currentExpiry - now > CONFIG.AD_UNLOCK_DURATION
+  const text = `📩 意見回饋\n用戶 ID: ${telegramId}\n\n${message}`
+  const res = await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendMessage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chat_id: env.ADMIN_TELEGRAM_ID, text }),
+  })
 
-  if (alreadyExtended) return error('Already extended', 409)
+  if (!res.ok) {
+    console.error('[api] handleFeedback: Telegram sendMessage failed:', await res.text())
+    return error('Failed to send feedback', 500)
+  }
 
-  const newExpiry = isCurrentlyUnlocked
-    ? currentExpiry + CONFIG.AD_UNLOCK_DURATION
-    : now + CONFIG.AD_UNLOCK_DURATION
-
-  await env.DB.prepare(
-    `UPDATE users SET ad_unlocked_at = ?, expiry_notified = 0 WHERE telegram_id = ?`
-  ).bind(newExpiry, telegramId).run()
-
-  return json({ ok: true, unlock_expires_at: newExpiry })
+  return json({ ok: true })
 }
 
 // ─── Internal handlers ─────────────────────────────────────────────────────────
@@ -338,13 +308,9 @@ async function handlePendingNotifications(env: Env): Promise<Response> {
     env.DB,
     CONFIG.NOTIFICATION_BATCH_SIZE
   )
-  // When unlock ad is disabled, force every user's ad_unlocked_at to far-future so
-  // notify.py sees is_unlocked=True and sends full notifications to all boards.
-  if (!getAdFlags(env).unlock) {
-    const FAR_FUTURE = 9_999_999_999
-    return json(notifications.map((n) => ({ ...n, ad_unlocked_at: FAR_FUTURE })))
-  }
-  return json(notifications)
+  // All users receive full notifications (ad unlock feature removed).
+  const FAR_FUTURE = 9_999_999_999
+  return json(notifications.map((n) => ({ ...n, ad_unlocked_at: FAR_FUTURE })))
 }
 
 async function handleNotificationStatus(request: Request, env: Env): Promise<Response> {
