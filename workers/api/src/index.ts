@@ -375,7 +375,7 @@ async function handleQueue(request: Request, env: Env): Promise<Response> {
 
 /**
  * Verifies a board exists on PTT and returns its canonical name (correct casing).
- * PTT URLs are case-sensitive; following redirects gives us the authoritative name.
+ * PTT serves the authoritative board name in the page title regardless of URL casing.
  * Returns null if the board doesn't exist or the request fails.
  */
 async function checkPttBoard(board: string): Promise<string | null> {
@@ -386,9 +386,13 @@ async function checkPttBoard(board: string): Promise<string | null> {
     )
     if (res.status !== 200) return null
 
-    // Extract canonical board name from the final URL after any redirects
-    const match = res.url.match(/\/bbs\/([^/]+)\//)
-    return match ? decodeURIComponent(match[1]) : board
+    // PTT title format: "看板 BoardName 文章列表 - 批踢踢實業坊"
+    const html = await res.text()
+    const titleMatch = html.match(/<title>看板\s+(\S+)\s+文章列表/)
+    if (titleMatch) return titleMatch[1]
+
+    // Fallback: return user input as-is
+    return board
   } catch (err) {
     console.error(`[api] checkPttBoard: Error fetching PTT for board ${board}:`, err)
     return null

@@ -18,6 +18,7 @@ export default function AddBoardModal({ subscriptions, onClose, onAdd }: Props) 
   const [keywords, setKeywords]           = useState<string[]>([])
   const [kwInput, setKwInput]             = useState('')
   const [searching, setSearching]         = useState(false)
+  const [notFound, setNotFound]           = useState(false)
   const [submitting, setSubmitting]       = useState(false)
 
   const searchRef  = useRef<HTMLInputElement>(null)
@@ -37,6 +38,9 @@ export default function AddBoardModal({ subscriptions, onClose, onAdd }: Props) 
   )
   const showNoResults = query.trim().length > 0 && filteredPopular.length === 0 && !selectedBoard
 
+  // Reset not-found state whenever the query changes
+  useEffect(() => { setNotFound(false) }, [query])
+
   const handleSelectBoard = useCallback((name: string) => {
     setSelectedBoard(name)
     setQuery('')
@@ -53,10 +57,10 @@ export default function AddBoardModal({ subscriptions, onClose, onAdd }: Props) 
       if (match) {
         handleSelectBoard(match.name)
       } else {
-        // board not found — keep query so user can edit
+        setNotFound(true)
       }
     } catch {
-      // network error — silently ignore, user can retry
+      setNotFound(true)
     } finally {
       setSearching(false)
     }
@@ -153,22 +157,31 @@ export default function AddBoardModal({ subscriptions, onClose, onAdd }: Props) 
               ))}
 
               {showNoResults && (
-                <button
-                  onClick={handleDirectSearch}
-                  disabled={searching}
-                  className="flex items-center justify-between px-4 py-3 bg-tg-secondary rounded-xl active:opacity-60 transition-opacity text-left disabled:opacity-50"
-                >
-                  <span className="text-tg-text text-[15px]">
-                    {searching ? '搜尋中…' : `直接搜尋「${query}」`}
-                  </span>
-                  {searching ? (
-                    <div className="w-4 h-4 rounded-full border-2 border-tg-hint/30 border-t-tg-btn animate-spin" />
-                  ) : (
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-tg-hint">
-                      <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+                notFound ? (
+                  <div className="flex items-center gap-3 px-4 py-3 bg-tg-secondary rounded-xl">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-tg-hint flex-shrink-0">
+                      <circle cx="12" cy="12" r="10" /><path d="M12 8v4M12 16h.01" />
                     </svg>
-                  )}
-                </button>
+                    <span className="text-tg-hint text-[15px]">找不到看板「{query}」</span>
+                  </div>
+                ) : (
+                  <button
+                    onClick={handleDirectSearch}
+                    disabled={searching}
+                    className="flex items-center justify-between px-4 py-3 bg-tg-secondary rounded-xl active:opacity-60 transition-opacity text-left disabled:opacity-50"
+                  >
+                    <span className="text-tg-text text-[15px]">
+                      {searching ? '搜尋中…' : `直接搜尋「${query}」`}
+                    </span>
+                    {searching ? (
+                      <div className="w-4 h-4 rounded-full border-2 border-tg-hint/30 border-t-tg-btn animate-spin" />
+                    ) : (
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-tg-hint">
+                        <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+                      </svg>
+                    )}
+                  </button>
+                )
               )}
             </div>
           </div>
