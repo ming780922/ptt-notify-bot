@@ -130,16 +130,19 @@ export default function Page() {
   // ── Delete board ──────────────────────────────────────────────────────────
 
   const handleDeleteBoard = useCallback(async (board: string) => {
+    const snapshot = subscriptions
+    setSubs((prev) => prev.filter((s) => s.board !== board))
+    setModal(null)
     try {
       await apiFetch(`/api/subscriptions/${encodeURIComponent(board)}`, { method: 'DELETE' })
       haptic.success()
-      setModal(null)
       toast(`已取消訂閱 ${board}`)
-      await loadSubscriptions()
     } catch {
+      setSubs(snapshot)
+      setModal({ mode: 'edit', board })
       toast('刪除失敗，請稍後再試')
     }
-  }, [loadSubscriptions, toast])
+  }, [subscriptions, toast])
 
   // ── Render ────────────────────────────────────────────────────────────────
 
