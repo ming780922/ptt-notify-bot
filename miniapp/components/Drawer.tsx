@@ -38,10 +38,16 @@ export default function Drawer({ open, onClose, onFeedback }: Props) {
           </button>
         </div>
 
-        {/* Version */}
-        <p className="text-tg-hint text-xs px-5 mt-auto pb-8">
-          #{process.env.NEXT_PUBLIC_COMMIT_SHA?.slice(0, 7) ?? 'dev'}
-        </p>
+        {/* Footer */}
+        <div className="px-5 mt-auto pb-8 flex flex-col gap-2">
+          <div className="flex gap-3">
+            <a href="/terms"  className="text-tg-hint text-xs underline-offset-2 hover:underline active:opacity-60">使用條款</a>
+            <a href="/privacy" className="text-tg-hint text-xs underline-offset-2 hover:underline active:opacity-60">隱私權政策</a>
+          </div>
+          <p className="text-tg-hint text-xs">
+            #{process.env.NEXT_PUBLIC_COMMIT_SHA?.slice(0, 7) ?? 'dev'}
+          </p>
+        </div>
       </div>
     </div>
   )
