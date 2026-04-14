@@ -93,7 +93,7 @@ async def send_full_notification(
     article_url = n.get("article_url") or ""
     pub_time = format_article_time(n.get("article_id", ""))
 
-    text = f"📋 <b>{html.escape(n['board'])}</b> 新文章\n{title}"
+    text = f"[<b>{html.escape(n['board'])}</b>] 有新文章\n{title}"
     if pub_time:
         text += f"\n{pub_time}"
     if article_url:
@@ -103,7 +103,7 @@ async def send_full_notification(
 
 async def send_hidden_notification(client: httpx.AsyncClient, n: dict) -> None:
     text = (
-        f"📋 <b>{html.escape(n['board'])}</b> 有新文章\n"
+        f"[<b>{html.escape(n['board'])}</b>] 有新文章\n"
         f"完整通知已暫停（前 {FREE_BOARDS_LIMIT} 個看板不受影響）\n"
         f"觀看廣告解鎖 24 小時完整通知。"
     )
