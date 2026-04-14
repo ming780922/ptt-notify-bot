@@ -73,13 +73,9 @@ function SubscriptionCard({ sub, onClick }: { sub: SubscriptionWithRank; onClick
       <div className="min-w-0">
         <p className="font-semibold text-tg-text truncate">{sub.board}</p>
         <div className="flex flex-wrap gap-x-2 mt-1">
-          {sub.keywords && sub.keywords.length > 0 ? (
-            sub.keywords.map((kw) => (
-              <span key={kw} className="text-xs text-tg-hint">#{kw}</span>
-            ))
-          ) : (
-            <span className="text-xs text-tg-hint">「所有文章」</span>
-          )}
+          {sub.keywords?.map((kw) => (
+            <span key={kw} className="text-xs text-tg-hint">#{kw}</span>
+          ))}
         </div>
       </div>
       <span className="text-tg-hint text-lg ml-2 flex-shrink-0">›</span>
