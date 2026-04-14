@@ -7,7 +7,6 @@ import type { SubscriptionWithRank } from '@/lib/types'
 import SubscriptionList from '@/components/SubscriptionList'
 import AddBoardModal from '@/components/AddBoardModal'
 import EditBoardModal from '@/components/EditBoardModal'
-import ConfirmDeleteModal from '@/components/ConfirmDeleteModal'
 import Drawer from '@/components/Drawer'
 import FeedbackScreen from '@/components/FeedbackScreen'
 import Toast, { type ToastHandle } from '@/components/Toast'
@@ -40,7 +39,6 @@ export default function Page() {
 
   const [subscriptions, setSubs]        = useState<SubscriptionWithRank[]>([])
   const [modal, setModal]               = useState<ModalState | null>(null)
-  const [confirmBoard, setConfirmBoard] = useState<string | null>(null)
   const [drawerOpen, setDrawerOpen]     = useState(false)
   const [feedbackOpen, setFeedbackOpen] = useState(false)
   const [booted, setBooted]             = useState(false)
@@ -54,14 +52,13 @@ export default function Page() {
     const tg = window.Telegram?.WebApp
     if (!tg?.BackButton) return
 
-    const anyOpen = !!modal || !!confirmBoard || feedbackOpen || drawerOpen
+    const anyOpen = !!modal || feedbackOpen || drawerOpen
     if (anyOpen) {
       tg.BackButton.show()
       const handler = () => {
         haptic.tap()
-        if (drawerOpen)       setDrawerOpen(false)
+        if (drawerOpen)        setDrawerOpen(false)
         else if (feedbackOpen) setFeedbackOpen(false)
-        else if (confirmBoard) setConfirmBoard(null)
         else                   setModal(null)
       }
       tg.BackButton.onClick(handler)
@@ -72,7 +69,7 @@ export default function Page() {
     } else {
       tg.BackButton.hide()
     }
-  }, [booted, modal, confirmBoard, feedbackOpen, drawerOpen])
+  }, [booted, modal, feedbackOpen, drawerOpen])
 
   // ── Data loading ──────────────────────────────────────────────────────────
 
@@ -136,7 +133,6 @@ export default function Page() {
     try {
       await apiFetch(`/api/subscriptions/${encodeURIComponent(board)}`, { method: 'DELETE' })
       haptic.success()
-      setConfirmBoard(null)
       setModal(null)
       toast(`已取消訂閱 ${board}`)
       await loadSubscriptions()
@@ -220,16 +216,7 @@ export default function Page() {
           toast={toast}
           onClose={() => setModal(null)}
           onSave={handleEditSave}
-          onDelete={(board) => { setModal(null); setConfirmBoard(board) }}
-        />
-      )}
-
-      {/* Delete confirmation */}
-      {confirmBoard && (
-        <ConfirmDeleteModal
-          board={confirmBoard}
-          onCancel={() => setConfirmBoard(null)}
-          onConfirm={handleDeleteBoard}
+          onDelete={handleDeleteBoard}
         />
       )}
 

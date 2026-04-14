@@ -19,6 +19,7 @@ export default function EditBoardModal({ board, toast, onClose, onSave, onDelete
   const [loading, setLoading]               = useState(true)
   const [input, setInput]                   = useState('')
   const [saving, setSaving]                 = useState(false)
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
 
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -169,19 +170,39 @@ export default function EditBoardModal({ board, toast, onClose, onSave, onDelete
 
         {/* Action buttons */}
         <div className="flex flex-col gap-2.5 mt-auto">
-          <button
-            onClick={handleSave}
-            disabled={!isDirty || saving}
-            className="w-full py-3.5 bg-tg-btn text-tg-btn-text font-semibold rounded-xl text-[15px] active:opacity-75 transition-opacity disabled:opacity-40"
-          >
-            {saving ? '儲存中…' : '儲存變更'}
-          </button>
-          <button
-            onClick={() => onDelete(board)}
-            className="w-full py-3 rounded-xl font-semibold text-[15px] text-danger bg-danger/10 active:opacity-75 transition-opacity"
-          >
-            刪除訂閱
-          </button>
+          {confirmingDelete ? (
+            <>
+              <p className="text-sm text-tg-hint text-center">確定要取消訂閱「{board}」？</p>
+              <button
+                onClick={() => onDelete(board)}
+                className="w-full py-3.5 bg-danger text-white font-semibold rounded-xl text-[15px] active:opacity-75 transition-opacity"
+              >
+                確認刪除
+              </button>
+              <button
+                onClick={() => setConfirmingDelete(false)}
+                className="w-full py-3 bg-tg-hint/20 text-tg-text font-semibold rounded-xl text-[15px] active:opacity-75 transition-opacity"
+              >
+                取消
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={handleSave}
+                disabled={!isDirty || saving}
+                className="w-full py-3.5 bg-tg-btn text-tg-btn-text font-semibold rounded-xl text-[15px] active:opacity-75 transition-opacity disabled:opacity-40"
+              >
+                {saving ? '儲存中…' : '儲存變更'}
+              </button>
+              <button
+                onClick={() => setConfirmingDelete(true)}
+                className="w-full py-3 rounded-xl font-semibold text-[15px] text-danger bg-danger/10 active:opacity-75 transition-opacity"
+              >
+                刪除訂閱
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>

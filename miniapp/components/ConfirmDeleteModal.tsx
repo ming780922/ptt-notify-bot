@@ -20,7 +20,7 @@ export default function ConfirmDeleteModal({ board, onCancel, onConfirm }: Props
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] px-6">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[200] px-6">
       <div className="bg-tg-secondary rounded-2xl w-full max-w-[300px] p-6 flex flex-col gap-4">
         <div className="flex flex-col gap-2 text-center">
           <p className="font-semibold text-[17px] text-tg-text">取消訂閱</p>
