@@ -33,14 +33,14 @@ export default function FeedbackScreen({ onClose, toast }: Props) {
   return (
     <div className="fixed inset-0 bg-tg-bg z-[150] flex flex-col">
       {/* Header */}
-      <div className="flex items-center px-4 pt-4 pb-3 border-b border-tg-hint/15 flex-shrink-0">
+      <div className="flex items-center justify-between px-4 py-4 border-b border-tg-hint/15 flex-shrink-0">
+        <span className="font-bold text-[17px] text-tg-text">意見回饋</span>
         <button
           onClick={onClose}
-          className="text-tg-btn text-sm font-medium active:opacity-60 transition-opacity"
+          className="w-7 h-7 rounded-full bg-tg-secondary flex items-center justify-center text-tg-hint text-[13px] active:opacity-60"
         >
-          ← 返回
+          ✕
         </button>
-        <span className="font-semibold text-[17px] text-tg-text mx-auto pr-12">意見回饋</span>
       </div>
 
       {/* Content */}
