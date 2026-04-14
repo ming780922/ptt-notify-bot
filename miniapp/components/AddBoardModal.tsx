@@ -208,11 +208,11 @@ export default function AddBoardModal({ subscriptions, onClose, onAdd }: Props) 
           {keywords.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {keywords.map((kw, i) => (
-                <span key={kw} className="inline-flex items-center gap-1.5 pl-3 pr-1.5 py-1 bg-tg-btn/10 text-tg-btn rounded-full text-[13px] font-medium">
+                <span key={kw} className="inline-flex items-center gap-1.5 pl-3 pr-1.5 py-1 bg-tg-btn text-tg-btn-text rounded-full text-[13px] font-semibold">
                   {kw}
                   <button
                     onClick={() => handleRemoveKeyword(i)}
-                    className="w-4 h-4 rounded-full flex items-center justify-center text-tg-btn/60 hover:text-tg-btn text-xs font-bold leading-none"
+                    className="w-4 h-4 rounded-full flex items-center justify-center text-tg-btn-text/80 hover:text-tg-btn-text text-xs font-bold leading-none"
                   >
                     ×
                   </button>
