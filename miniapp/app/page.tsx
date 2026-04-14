@@ -213,6 +213,7 @@ export default function Page() {
         <EditBoardModal
           key={`edit-${modal.board}`}
           board={modal.board}
+          initialKeywords={subscriptions.find(s => s.board === modal.board)?.keywords ?? []}
           toast={toast}
           onClose={() => setModal(null)}
           onSave={handleEditSave}

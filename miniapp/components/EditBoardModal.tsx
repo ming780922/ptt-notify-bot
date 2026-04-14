@@ -1,35 +1,26 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { apiFetch } from '@/lib/api'
 import { haptic } from '@/lib/haptic'
 import { MAX_KEYWORDS_PER_BOARD } from '@/lib/config'
 
 interface Props {
-  board:               string
-  toast(msg: string):  void
-  onClose():           void
-  onSave():            void
-  onDelete(b: string): void
+  board:                string
+  initialKeywords:      string[]
+  toast(msg: string):   void
+  onClose():            void
+  onSave():             void
+  onDelete(b: string):  void
 }
 
-export default function EditBoardModal({ board, toast, onClose, onSave, onDelete }: Props) {
-  const [keywords, setKeywords]             = useState<string[]>([])
-  const [initialKeywords, setInitialKeywords] = useState<string[]>([])
-  const [loading, setLoading]               = useState(true)
+export default function EditBoardModal({ board, initialKeywords, toast, onClose, onSave, onDelete }: Props) {
+  const [keywords, setKeywords]             = useState<string[]>(initialKeywords)
   const [input, setInput]                   = useState('')
   const [saving, setSaving]                 = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
 
   const inputRef = useRef<HTMLInputElement>(null)
-
-  useEffect(() => {
-    setLoading(true)
-    apiFetch<{ keywords: string[] }>(`/api/subscriptions/${encodeURIComponent(board)}/keywords`)
-      .then((d) => { setKeywords(d.keywords); setInitialKeywords(d.keywords) })
-      .catch(() => {})
-      .finally(() => setLoading(false))
-  }, [board])
 
   const isDirty = JSON.stringify(keywords) !== JSON.stringify(initialKeywords)
 
@@ -104,53 +95,45 @@ export default function EditBoardModal({ board, toast, onClose, onSave, onDelete
             留空則接收所有新文章；設定後只通知標題含關鍵字的文章
           </p>
 
-          {loading ? (
-            <div className="flex justify-center py-4">
-              <div className="w-5 h-5 rounded-full border-2 border-tg-hint/30 border-t-tg-btn animate-spin" />
-            </div>
-          ) : (
-            <>
-              {keywords.length > 0 && (
-                <div className="flex flex-wrap gap-2 mb-3">
-                  {keywords.map((kw, i) => (
-                    <span key={kw} className="inline-flex items-center gap-1.5 pl-3 pr-1.5 py-1 bg-tg-btn/10 text-tg-btn rounded-full text-[13px] font-medium">
-                      {kw}
-                      <button
-                        onClick={() => handleRemove(i)}
-                        className="w-4 h-4 rounded-full flex items-center justify-center text-tg-btn/60 hover:text-tg-btn text-xs font-bold leading-none"
-                      >
-                        ×
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              {keywords.length < MAX_KEYWORDS_PER_BOARD && (
-                <div className="flex gap-2">
-                  <input
-                    ref={inputRef}
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAdd() } }}
-                    placeholder="輸入關鍵字…"
-                    maxLength={20}
-                    className="flex-1 px-3.5 py-2 bg-tg-secondary text-tg-text placeholder:text-tg-hint rounded-xl text-sm outline-none"
-                  />
+          {keywords.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-3">
+              {keywords.map((kw, i) => (
+                <span key={kw} className="inline-flex items-center gap-1.5 pl-3 pr-1.5 py-1 bg-tg-btn/10 text-tg-btn rounded-full text-[13px] font-medium">
+                  {kw}
                   <button
-                    onClick={handleAdd}
-                    disabled={!input.trim()}
-                    className="px-4 py-2 bg-tg-btn text-tg-btn-text rounded-xl font-semibold text-lg leading-none disabled:opacity-35 active:opacity-75 transition-opacity"
+                    onClick={() => handleRemove(i)}
+                    className="w-4 h-4 rounded-full flex items-center justify-center text-tg-btn/60 hover:text-tg-btn text-xs font-bold leading-none"
                   >
-                    ＋
+                    ×
                   </button>
-                </div>
-              )}
+                </span>
+              ))}
+            </div>
+          )}
 
-              {keywords.length >= MAX_KEYWORDS_PER_BOARD && (
-                <p className="text-xs text-tg-hint mt-1">已達上限（{MAX_KEYWORDS_PER_BOARD} 個）</p>
-              )}
-            </>
+          {keywords.length < MAX_KEYWORDS_PER_BOARD && (
+            <div className="flex gap-2">
+              <input
+                ref={inputRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAdd() } }}
+                placeholder="輸入關鍵字…"
+                maxLength={20}
+                className="flex-1 px-3.5 py-2 bg-tg-secondary text-tg-text placeholder:text-tg-hint rounded-xl text-sm outline-none"
+              />
+              <button
+                onClick={handleAdd}
+                disabled={!input.trim()}
+                className="px-4 py-2 bg-tg-btn text-tg-btn-text rounded-xl font-semibold text-lg leading-none disabled:opacity-35 active:opacity-75 transition-opacity"
+              >
+                ＋
+              </button>
+            </div>
+          )}
+
+          {keywords.length >= MAX_KEYWORDS_PER_BOARD && (
+            <p className="text-xs text-tg-hint mt-1">已達上限（{MAX_KEYWORDS_PER_BOARD} 個）</p>
           )}
         </div>
 
