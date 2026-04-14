@@ -159,20 +159,20 @@ async function handleAddSubscription(
     : []
   if (keywords.length > CONFIG.MAX_KEYWORDS_PER_BOARD) return error('Too many keywords', 400)
 
-  // Check if board exists on PTT
-  const boardExists = await checkPttBoard(board)
-  if (!boardExists) {
+  // Check if board exists on PTT; returns canonical name (correct casing) or null
+  const canonicalBoard = await checkPttBoard(board)
+  if (!canonicalBoard) {
     console.warn(`[api] handleAddSubscription: Board not found on PTT: ${board}`)
     return error('Board not found on PTT', 404)
   }
 
-  // upsertBoard with is_verified = 1
-  await upsertBoard(env.DB, board, board, 1)
+  // upsertBoard with is_verified = 1, using canonical casing from PTT
+  await upsertBoard(env.DB, canonicalBoard, canonicalBoard, 1)
 
-  await createSubscription(env.DB, telegramId, board)
+  await createSubscription(env.DB, telegramId, canonicalBoard)
 
   // Ensure subscription_filters row exists; save keywords if provided
-  const sub = await getSubscriptionByUserAndBoard(env.DB, telegramId, board)
+  const sub = await getSubscriptionByUserAndBoard(env.DB, telegramId, canonicalBoard)
   if (sub) {
     if (keywords.length > 0) {
       await updateSubscriptionFilter(env.DB, sub.id, keywords)
@@ -181,11 +181,11 @@ async function handleAddSubscription(
     }
   }
 
-  console.log(`[api] handleAddSubscription: Successfully subscribed to ${board} for ${telegramId}`)
+  console.log(`[api] handleAddSubscription: Successfully subscribed to ${canonicalBoard} for ${telegramId}`)
 
   // Return subscription with board_rank
   const allSubs = await getSubscriptionsByUser(env.DB, telegramId)
-  const created = allSubs.find((s) => s.board === board)
+  const created = allSubs.find((s) => s.board === canonicalBoard)
   return json(created ?? sub, 201)
 }
 
@@ -224,12 +224,11 @@ async function handleSearchBoards(url: URL, env: Env): Promise<Response> {
 
     if (!hasExactMatch && isValidName) {
       console.log(`[api] handleSearchBoards: Performing real-time PTT check for "${q}"...`)
-      const exists = await checkPttBoard(q)
-      if (exists) {
-        console.log(`[api] handleSearchBoards: Found board "${q}" on PTT, upserting...`)
-        // 抓取成功後，將其存入 DB 以便未來搜尋
-        await upsertBoard(env.DB, q, q, 1)
-        boards.push({ name: q, display_name: q, is_verified: 1, is_popular: 0 })
+      const canonicalName = await checkPttBoard(q)
+      if (canonicalName) {
+        console.log(`[api] handleSearchBoards: Found board "${canonicalName}" on PTT, upserting...`)
+        await upsertBoard(env.DB, canonicalName, canonicalName, 1)
+        boards.push({ name: canonicalName, display_name: canonicalName, is_verified: 1, is_popular: 0 })
       }
     }
 
@@ -374,17 +373,24 @@ async function handleQueue(request: Request, env: Env): Promise<Response> {
 
 // ─── PTT board validation ──────────────────────────────────────────────────────
 
-async function checkPttBoard(board: string): Promise<boolean> {
+/**
+ * Verifies a board exists on PTT and returns its canonical name (correct casing).
+ * PTT URLs are case-sensitive; following redirects gives us the authoritative name.
+ * Returns null if the board doesn't exist or the request fails.
+ */
+async function checkPttBoard(board: string): Promise<string | null> {
   try {
-    // PTT doesn't have an public /index.json endpoint by default.
-    // We check the board's main index.html to verify existence.
     const res = await fetch(
       `https://www.ptt.cc/bbs/${encodeURIComponent(board)}/index.html`,
       { headers: { Cookie: 'over18=1' } }
     )
-    return res.status === 200
+    if (res.status !== 200) return null
+
+    // Extract canonical board name from the final URL after any redirects
+    const match = res.url.match(/\/bbs\/([^/]+)\//)
+    return match ? decodeURIComponent(match[1]) : board
   } catch (err) {
     console.error(`[api] checkPttBoard: Error fetching PTT for board ${board}:`, err)
-    return false
+    return null
   }
 }
