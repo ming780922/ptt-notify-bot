@@ -218,17 +218,27 @@ async function handleSearchBoards(url: URL, env: Env): Promise<Response> {
   try {
     const boards = await searchBoards(env.DB, q)
 
-    // 如果沒有精確匹配，嘗試直接搜尋 PTT
-    const hasExactMatch = boards.some((b) => b.name.toLowerCase() === q.toLowerCase())
+    const exactCaseIdx = boards.findIndex((b) => b.name === q)
+    const caseInsensitiveIdx = boards.findIndex((b) => b.name.toLowerCase() === q.toLowerCase())
     const isValidName = /^[a-zA-Z0-9_-]{3,20}$/.test(q)
 
-    if (!hasExactMatch && isValidName) {
+    // Call PTT if no exact-case match — catches both missing boards and wrong-cased DB entries
+    if (exactCaseIdx === -1 && isValidName) {
       console.log(`[api] handleSearchBoards: Performing real-time PTT check for "${q}"...`)
       const canonicalName = await checkPttBoard(q)
       if (canonicalName) {
-        console.log(`[api] handleSearchBoards: Found board "${canonicalName}" on PTT, upserting...`)
+        console.log(`[api] handleSearchBoards: Canonical name from PTT: "${canonicalName}"`)
         await upsertBoard(env.DB, canonicalName, canonicalName, 1)
-        boards.push({ name: canonicalName, display_name: canonicalName, is_verified: 1, is_popular: 0 })
+        if (caseInsensitiveIdx >= 0) {
+          // Fix wrong-cased entry in result in-place
+          boards[caseInsensitiveIdx] = {
+            ...boards[caseInsensitiveIdx],
+            name: canonicalName,
+            display_name: canonicalName,
+          }
+        } else {
+          boards.push({ name: canonicalName, display_name: canonicalName, is_verified: 1, is_popular: 0 })
+        }
       }
     }
 
