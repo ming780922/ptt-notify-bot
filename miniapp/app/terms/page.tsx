@@ -1,8 +1,11 @@
 'use client'
 
+import TelegramBackButton from '@/components/TelegramBackButton'
+
 export default function TermsPage() {
   return (
     <div className="min-h-screen bg-tg-bg text-tg-text">
+      <TelegramBackButton />
       {/* Header */}
       <div className="sticky top-0 bg-tg-bg border-b border-tg-hint/15 flex items-center gap-3 px-4 py-4 z-10">
         <button
