@@ -7,17 +7,15 @@ export default function TermsPage() {
     <div className="min-h-screen bg-tg-bg text-tg-text">
       <TelegramBackButton />
       {/* Header */}
-      <div className="sticky top-0 bg-tg-bg border-b border-tg-hint/15 flex items-center gap-3 px-4 py-4 z-10">
+      <div className="sticky top-0 bg-tg-bg border-b border-tg-hint/15 flex items-center justify-between px-4 py-4 z-10">
+        <span className="font-bold text-[17px]">使用條款</span>
         <button
           onClick={() => history.back()}
-          className="w-7 h-7 rounded-full bg-tg-secondary flex items-center justify-center text-tg-hint active:opacity-60"
-          aria-label="返回"
+          className="w-7 h-7 rounded-full bg-tg-secondary flex items-center justify-center text-tg-hint text-[13px] active:opacity-60"
+          aria-label="關閉"
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M15 18l-6-6 6-6" />
-          </svg>
+          ✕
         </button>
-        <span className="font-bold text-[17px]">使用條款</span>
       </div>
 
       <div className="px-5 py-6 flex flex-col gap-6 max-w-2xl mx-auto pb-12">
