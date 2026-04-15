@@ -11,7 +11,7 @@ interface Props {
 export default function SubscriptionList({ subscriptions, onEdit, onAdd }: Props) {
   if (subscriptions.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center text-center pt-16 pb-8 px-6 gap-5">
+      <div className="min-h-screen -mt-4 flex flex-col items-center justify-center text-center px-6 gap-5 pt-14 pb-14">
         {/* Bell icon */}
         <div className="w-16 h-16 rounded-2xl bg-tg-secondary flex items-center justify-center flex-shrink-0">
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2481cc" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
