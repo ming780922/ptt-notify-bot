@@ -7,11 +7,11 @@ export default function TermsPage() {
     <div className="min-h-screen bg-tg-bg text-tg-text">
       <TelegramBackButton />
       {/* Header */}
-      <div className="sticky top-0 bg-tg-bg border-b border-tg-hint/15 flex items-center justify-between px-4 py-4 z-10">
+      <div className="sticky top-0 bg-tg-bg border-b border-tg-hint/15 relative flex items-center justify-center px-4 py-4 z-10">
         <span className="font-bold text-[17px]">使用條款</span>
         <button
           onClick={() => history.back()}
-          className="w-7 h-7 rounded-full bg-tg-secondary flex items-center justify-center text-tg-hint text-[13px] active:opacity-60"
+          className="absolute right-4 w-7 h-7 rounded-full bg-tg-secondary flex items-center justify-center text-tg-hint text-[13px] active:opacity-60"
           aria-label="關閉"
         >
           ✕
