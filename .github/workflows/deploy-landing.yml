@@ -17,4 +17,4 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: 4b4513475f5ee541622faacd26d279a6
-        run: npx wrangler pages deploy landing --project-name ptt-notify-landing
+        run: npx wrangler pages deploy landing --project-name ptt-notify-landing --branch main
