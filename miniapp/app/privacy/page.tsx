@@ -1,3 +1,4 @@
+// Legal content mirrors landing/privacy.html — update both when changing legal text
 'use client'
 
 import TelegramBackButton from '@/components/TelegramBackButton'
