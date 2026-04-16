@@ -22,7 +22,7 @@ export default function PrivacyPage() {
         <p className="text-xs text-tg-hint">最後更新日期：2026 年 4 月 14 日</p>
 
         <Section title="一、前言">
-          <p>歡迎使用 PTT 通知 Bot（以下簡稱「本服務」）。本隱私權政策說明我們如何收集、使用及保護您的個人資料。使用本服務即表示您同意本政策的內容。</p>
+          <p>歡迎使用 PTT貝爾（以下簡稱「本服務」）。本隱私權政策說明我們如何收集、使用及保護您的個人資料。使用本服務即表示您同意本政策的內容。</p>
         </Section>
 
         <Section title="二、收集的資料">

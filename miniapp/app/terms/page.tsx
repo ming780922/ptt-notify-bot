@@ -22,7 +22,7 @@ export default function TermsPage() {
         <p className="text-xs text-tg-hint">最後更新日期：2026 年 4 月 14 日</p>
 
         <Section title="一、服務說明">
-          <p>PTT 通知 Bot 是一款 Telegram Bot 服務，提供 PTT 看板新文章即時通知功能。用戶可訂閱指定看板並設定關鍵字過濾條件，當有符合條件的新文章發布時透過 Telegram 接收通知。</p>
+          <p>PTT貝爾 是一款 Telegram Bot 服務，提供 PTT 看板新文章即時通知功能。用戶可訂閱指定看板並設定關鍵字過濾條件，當有符合條件的新文章發布時透過 Telegram 接收通知。</p>
         </Section>
 
         <Section title="二、服務條件">
