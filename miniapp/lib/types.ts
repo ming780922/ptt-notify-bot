@@ -13,3 +13,9 @@ export interface Board {
   is_verified:  number
   is_popular:   number
 }
+
+export interface UserState {
+  telegram_id:       number
+  subscription_count: number
+  ad_enabled_unlock: boolean
+}

@@ -29,6 +29,11 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     if (request.method === 'OPTIONS') return preflight()
 
+    if (!env.INTERNAL_SECRET || env.INTERNAL_SECRET.length < 32) {
+      console.error('[api] INTERNAL_SECRET is missing or too short (min 32 chars)')
+      return error('Server misconfiguration', 500)
+    }
+
     const url = new URL(request.url)
     const { pathname } = url
     const method = request.method
@@ -127,11 +132,28 @@ async function authenticateTelegram(
   return tgUser
 }
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function parseKeywords(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return []
+  return (raw as unknown[]).map((k) => String(k).trim()).filter((k) => k.length > 0)
+}
+
+function validateKeywords(keywords: string[]): Response | null {
+  if (keywords.length > CONFIG.MAX_KEYWORDS_PER_BOARD) return error('Too many keywords', 400)
+  if (keywords.some((k) => k.length > 50)) return error('Keyword too long (max 50 chars)', 400)
+  return null
+}
+
 // ─── API handlers ──────────────────────────────────────────────────────────────
 
 async function handleGetUser(env: Env, telegramId: number): Promise<Response> {
   const subscription_count = await getSubscriptionCount(env.DB, telegramId)
-  return json({ telegram_id: telegramId, subscription_count })
+  return json({
+    telegram_id: telegramId,
+    subscription_count,
+    ad_enabled_unlock: env.AD_ENABLED_UNLOCK === 'true',
+  })
 }
 
 async function handleGetSubscriptions(env: Env, telegramId: number): Promise<Response> {
@@ -154,10 +176,9 @@ async function handleAddSubscription(
   const board = body.board?.trim()
   if (!board) return error('board is required')
 
-  const keywords = Array.isArray(body.keywords)
-    ? (body.keywords as unknown[]).map((k) => String(k).trim()).filter((k) => k.length > 0)
-    : []
-  if (keywords.length > CONFIG.MAX_KEYWORDS_PER_BOARD) return error('Too many keywords', 400)
+  const keywords = parseKeywords(body.keywords)
+  const kwError = validateKeywords(keywords)
+  if (kwError) return kwError
 
   // Check if board exists on PTT; returns canonical name (correct casing) or null
   const canonicalBoard = await checkPttBoard(board)
@@ -266,11 +287,9 @@ async function handlePutKeywords(
   const body = await request.json<{ keywords?: unknown }>()
   if (!Array.isArray(body.keywords)) return error('keywords must be an array')
 
-  const keywords = (body.keywords as unknown[])
-    .map((k) => String(k).trim())
-    .filter((k) => k.length > 0)
-
-  if (keywords.length > CONFIG.MAX_KEYWORDS_PER_BOARD) return error('Too many keywords', 400)
+  const keywords = parseKeywords(body.keywords)
+  const kwError = validateKeywords(keywords)
+  if (kwError) return kwError
 
   const sub = await getSubscriptionByUserAndBoard(env.DB, telegramId, board)
   if (!sub) return error('Subscription not found', 404)

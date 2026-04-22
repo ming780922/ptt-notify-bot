@@ -22,6 +22,14 @@ jobs:
         working-directory: workers/api
         run: npm ci
 
+      - name: Check DEBUG_MODE is off
+        working-directory: workers/api
+        run: |
+          if grep -E '^\s*DEBUG_MODE\s*=\s*"true"' wrangler.toml; then
+            echo "ERROR: DEBUG_MODE is set to \"true\" in wrangler.toml. Do not deploy with debug mode enabled."
+            exit 1
+          fi
+
       - name: Deploy
         working-directory: workers/api
         env:

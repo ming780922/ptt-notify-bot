@@ -13,7 +13,16 @@ database_name = "ptt-notify-bot-db"
 database_id = "4f64d28c-2797-41c6-93ce-15beb5533e67"
 
 [vars]
-ADMIN_TELEGRAM_ID = ""   # 部署後填入或使用 wrangler secret put ADMIN_TELEGRAM_ID
+# Admin Telegram user ID — receives feedback and error alerts.
+# Get via @userinfobot. Also settable via: wrangler secret put ADMIN_TELEGRAM_ID
+ADMIN_TELEGRAM_ID = ""
+
+# ── Secrets (set via `wrangler secret put`, never commit values) ─────────────
+# BOT_TOKEN        — Telegram Bot token from @BotFather
+# GH_TOKEN         — GitHub PAT with actions:write scope (dispatches crawl/notify workflows)
+# GH_REPO          — GitHub repo in owner/repo format (e.g. "ming780922/ptt-notify-bot")
+# MINIAPP_URL      — Cloudflare Pages URL for the Mini App (e.g. "https://ptt-notify-miniapp.pages.dev")
+# INTERNAL_SECRET  — Shared secret for /internal/* API endpoints; generate with: openssl rand -hex 32
 
 [triggers]
 # */5：enqueue boards + dispatch crawler

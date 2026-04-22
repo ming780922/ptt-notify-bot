@@ -201,3 +201,9 @@ feedback - 提供意見回饋
 - **廣告 SDK**：`POST /api/ad/complete` 目前直接解鎖，尚未完整串接 Monetag SDK 的服務端驗證
 - **PTT 反爬**：`crawler.py` 無 retry / rate-limit，高頻呼叫可能被封
 - **MAX_CRAWL_WORKERS = 1**：調整時需同步修改 Bot Worker Cron 邏輯
+
+<!-- SPECKIT START -->
+For additional context about technologies to be used, project structure,
+shell commands, and other important information, read the current plan at
+`specs/001-ptt-notify-bot-system/plan.md`
+<!-- SPECKIT END -->

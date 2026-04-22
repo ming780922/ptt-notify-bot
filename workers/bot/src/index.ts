@@ -15,6 +15,11 @@ const CRON_NOTIFY = '2-57/5 * * * *'
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
+    if (!env.INTERNAL_SECRET || env.INTERNAL_SECRET.length < 32) {
+      console.error('[bot] INTERNAL_SECRET is missing or too short (min 32 chars)')
+      return new Response('Server misconfiguration', { status: 500 })
+    }
+
     const url = new URL(request.url)
 
     if (url.pathname === '/webhook' && request.method === 'POST') {
@@ -32,6 +37,21 @@ export default {
       ctx.waitUntil(runNotifyCron(env))
     }
   },
+}
+
+// ─── Admin alert helper ───────────────────────────────────────────────────────
+
+async function sendAdminAlert(env: Env, message: string): Promise<void> {
+  if (!env.ADMIN_TELEGRAM_ID || !env.BOT_TOKEN) return
+  try {
+    await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: env.ADMIN_TELEGRAM_ID, text: message }),
+    })
+  } catch {
+    // best-effort; never throw from alert helper
+  }
 }
 
 // ─── Cron: */5 — enqueue boards & dispatch crawler ───────────────────────────
@@ -54,6 +74,7 @@ async function runCrawlCron(env: Env): Promise<void> {
       console.log(`[cron:crawl] Dispatched crawler (GitHub Action) | current in_progress: ${runningCount}`)
     } catch (err) {
       console.error('[cron:crawl] dispatchCrawler failed:', err)
+      await sendAdminAlert(env, `❌ Crawler dispatch failed: ${err}`)
     }
   }
 
@@ -72,7 +93,8 @@ async function redispatchStalePendingJobs(env: Env): Promise<void> {
 
   if (result.results.length === 0) return
 
-  console.log(`[cron:crawl] Redispatching ${result.results.length} stale pending jobs`)
+  const staleBoards = result.results.map((r) => r.board).join(', ')
+  await sendAdminAlert(env, `⚠️ Stale crawl jobs detected (${result.results.length} board(s): ${staleBoards}). Redispatching.`)
 
   const runningCount = await getActiveCrawlRunCount(env)
   if (runningCount >= CONFIG.MAX_CRAWL_WORKERS) return
@@ -81,6 +103,7 @@ async function redispatchStalePendingJobs(env: Env): Promise<void> {
     await dispatchCrawler(env)
   } catch (err) {
     console.error('[cron:crawl] redispatch failed:', err)
+    await sendAdminAlert(env, `❌ Crawler redispatch failed: ${err}`)
   }
 }
 

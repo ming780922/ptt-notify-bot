@@ -58,7 +58,9 @@ export default function AddBoardModal({ subscriptions, onClose, onAdd }: Props) 
     try {
       const boards = await apiFetch<Board[]>(`/api/boards/search?q=${encodeURIComponent(q)}`)
       const match = boards.find((b) => b.name.toLowerCase() === q.toLowerCase())
-      if (match) {
+      if (match && subSet.has(match.name.toLowerCase())) {
+        setNotFound(true) // already subscribed — treat as not selectable
+      } else if (match) {
         handleSelectBoard(match.name)
       } else {
         setNotFound(true)

@@ -1,5 +1,7 @@
 # PTT Notify Bot
 
+[![Test](https://github.com/ming780922/ptt-notify-bot/actions/workflows/test.yml/badge.svg)](https://github.com/ming780922/ptt-notify-bot/actions/workflows/test.yml)
+
 訂閱 PTT 看板，有新文章時透過 Telegram 通知你。
 
 ## 架構
