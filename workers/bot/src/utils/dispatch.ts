@@ -54,6 +54,31 @@ export async function dispatchNotifier(env: Env): Promise<void> {
   }
 }
 
+export async function dispatchWatchCrawler(env: Env): Promise<void> {
+  const [owner, repo] = env.GH_REPO.split('/')
+  const res = await fetch(
+    `https://api.github.com/repos/${owner}/${repo}/dispatches`,
+    {
+      method: 'POST',
+      headers: {
+        Accept: 'application/vnd.github+json',
+        Authorization: `Bearer ${env.GH_TOKEN}`,
+        'X-GitHub-Api-Version': '2022-11-28',
+        'User-Agent': 'ptt-notify-bot',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        event_type: 'watch',
+        client_payload: { ref: 'main' },
+      }),
+    }
+  )
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(`dispatchWatchCrawler failed (${res.status}): ${text}`)
+  }
+}
+
 export async function getActiveCrawlRunCount(env: Env): Promise<number> {
   const [owner, repo] = env.GH_REPO.split('/')
   const res = await fetch(

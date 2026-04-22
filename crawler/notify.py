@@ -96,7 +96,24 @@ async def send_full_notification(
         text += f"\n{pub_time}"
     if article_url:
         text += f"\n{article_url}"
-    await send_message(client, n["user_id"], text, [])
+
+    article_id = n.get("article_id", "")
+    keyboard = [[{"text": "追蹤留言 🔔", "callback_data": f"watch:{article_id}"}]] if article_id else []
+    await send_message(client, n["user_id"], text, keyboard)
+
+
+async def send_reply_notification(client: httpx.AsyncClient, n: dict) -> None:
+    article_id = n.get("article_id", "")
+    article_url = n.get("article_url") or ""
+    raw_title = n.get("article_title") or ""
+    reply_count = n.get("article_replies") or 0
+
+    text = f"<b>[{html.escape(n['board'])}]</b>\n{html.escape(raw_title)} 💬 {reply_count}"
+    if article_url:
+        text += f"\n{article_url}"
+
+    keyboard = [[{"text": "取消追蹤 ✕", "callback_data": f"unwatch:{article_id}"}]] if article_id else []
+    await send_message(client, n["user_id"], text, keyboard)
 
 
 async def send_hidden_notification(client: httpx.AsyncClient, n: dict) -> None:
@@ -167,7 +184,9 @@ async def main(client: httpx.AsyncClient) -> None:
                     expiry_sent_users.add(user_id)
                     await asyncio.sleep(0.1)
 
-                if board_rank <= FREE_BOARDS_LIMIT or is_unlocked:
+                if board_rank is None:
+                    await send_reply_notification(client, n)
+                elif board_rank <= FREE_BOARDS_LIMIT or is_unlocked:
                     await send_full_notification(client, n)
                 else:
                     await send_hidden_notification(client, n)

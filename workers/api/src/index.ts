@@ -1,6 +1,6 @@
 import type { Env } from './env'
 import type { TelegramUser } from './utils/auth'
-import type { NotificationInsert, PendingNotificationWithUser } from './db/queries'
+import type { PendingNotificationWithUser } from './db/queries'
 import { verifyTelegramInitData } from './utils/auth'
 import { json, error, preflight } from './utils/cors'
 import {
@@ -22,6 +22,12 @@ import {
   enqueuePendingNotifications,
   fetchPendingNotificationsWithUser,
   updateNotificationStatuses,
+  getActivePostWatches,
+  getPostWatchesByUser,
+  deletePostWatch,
+  updatePostWatchResult,
+  markPostWatchQueueDone,
+  type NotificationInsert,
 } from './db/queries'
 import { CONFIG } from '../../shared/config'
 
@@ -58,6 +64,15 @@ export default {
         }
         if (pathname === '/internal/queue' && method === 'POST') {
           return handleQueue(request, env)
+        }
+        if (pathname === '/internal/active-post-watches' && method === 'GET') {
+          return handleActivePostWatches(env)
+        }
+        if (pathname === '/internal/post-watch-results' && method === 'POST') {
+          return handlePostWatchResults(request, env)
+        }
+        if (pathname === '/internal/post-watch-queue' && method === 'POST') {
+          return handlePostWatchQueue(env)
         }
         return error('Not Found', 404)
       }
@@ -97,6 +112,13 @@ export default {
         }
         if (pathname === '/api/feedback' && method === 'POST') {
           return handleFeedback(request, env, tgUser.telegramId)
+        }
+        if (pathname === '/api/post-watches' && method === 'GET') {
+          return handleGetPostWatches(env, tgUser.telegramId)
+        }
+        const watchDelMatch = pathname.match(/^\/api\/post-watches\/([^/]+)$/)
+        if (watchDelMatch && method === 'DELETE') {
+          return handleDeletePostWatch(env, tgUser.telegramId, decodeURIComponent(watchDelMatch[1]))
         }
         return error('Not Found', 404)
       }
@@ -426,4 +448,79 @@ async function checkPttBoard(board: string): Promise<string | null> {
     console.error(`[api] checkPttBoard: Error fetching PTT for board ${board}:`, err)
     return null
   }
+}
+
+// ─── Post watch handlers ───────────────────────────────────────────────────────
+
+async function handleGetPostWatches(env: Env, telegramId: number): Promise<Response> {
+  const watches = await getPostWatchesByUser(env.DB, telegramId)
+  return json(watches)
+}
+
+async function handleDeletePostWatch(
+  env: Env,
+  telegramId: number,
+  articleId: string
+): Promise<Response> {
+  await deletePostWatch(env.DB, telegramId, articleId)
+  return json({ ok: true })
+}
+
+async function handleActivePostWatches(env: Env): Promise<Response> {
+  const watches = await getActivePostWatches(env.DB)
+  return json(watches)
+}
+
+async function handlePostWatchResults(request: Request, env: Env): Promise<Response> {
+  const body = await request.json<{
+    results: Array<{
+      user_id: number
+      article_id: string
+      new_reply_count: number
+      status: 'active' | 'expired'
+      notification?: {
+        board: string
+        article_title: string | null
+        article_url: string | null
+      }
+    }>
+  }>()
+
+  if (!Array.isArray(body.results)) return error('results must be an array')
+
+  const notificationInserts: Array<{
+    user_id: number
+    board: string
+    article_id: string
+    article_title: string | null
+    article_url: string | null
+    article_replies: number
+    board_rank: number | null
+  }> = []
+
+  for (const r of body.results) {
+    await updatePostWatchResult(env.DB, r.user_id, r.article_id, r.new_reply_count, r.status)
+    if (r.notification) {
+      notificationInserts.push({
+        user_id: r.user_id,
+        board: r.notification.board,
+        article_id: r.article_id,
+        article_title: r.notification.article_title,
+        article_url: r.notification.article_url,
+        article_replies: r.new_reply_count,
+        board_rank: null,
+      })
+    }
+  }
+
+  if (notificationInserts.length > 0) {
+    await enqueuePendingNotifications(env.DB, notificationInserts)
+  }
+
+  return json({ ok: true, updated: body.results.length, notified: notificationInserts.length })
+}
+
+async function handlePostWatchQueue(env: Env): Promise<Response> {
+  await markPostWatchQueueDone(env.DB)
+  return json({ ok: true })
 }
