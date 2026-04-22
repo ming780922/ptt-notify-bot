@@ -45,6 +45,7 @@ export default function EditBoardModal({ board, initialKeywords, toast, onClose,
   const handleSave = useCallback(async () => {
     if (!isDirty || saving) return
     setSaving(true)
+    const snapshot = keywords
     try {
       await apiFetch(`/api/subscriptions/${encodeURIComponent(board)}/keywords`, {
         method: 'PUT',
@@ -53,6 +54,7 @@ export default function EditBoardModal({ board, initialKeywords, toast, onClose,
       haptic.success()
       onSave()
     } catch {
+      setKeywords(snapshot)
       toast('儲存失敗，請稍後再試', 'error')
     } finally {
       setSaving(false)

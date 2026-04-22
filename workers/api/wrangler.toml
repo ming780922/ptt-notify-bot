@@ -7,12 +7,19 @@ compatibility_flags = ["nodejs_compat"]
 enabled = true
 
 [vars]
-# Ad feature toggles — set to "true" to enable the ad gate for each feature
-# "false" = feature is free (no ad required)
-AD_ENABLED_ADD_BOARD   = "false"
-AD_ENABLED_ADD_KEYWORD = "false"
-AD_ENABLED_UNLOCK      = "false"
+# Ad feature toggles — set to "true" to enable the ad gate for each feature.
+# All default to "false" (fully open access). Change and redeploy to toggle.
+AD_ENABLED_ADD_BOARD   = "false"   # Adding a board beyond FREE_BOARDS_LIMIT requires an ad
+AD_ENABLED_ADD_KEYWORD = "false"   # Adding a keyword beyond free limit requires an ad
+AD_ENABLED_UNLOCK      = "false"   # Full notifications beyond rank 2 require an ad unlock
+
+# Local development only — allows `hash=debug_mode` to bypass initData verification.
+# MUST remain "false" in production. deploy-api.yml enforces this at deploy time.
 DEBUG_MODE             = "false"
+
+# ── Secrets (set via `wrangler secret put`, never commit values) ─────────────
+# BOT_TOKEN        — Telegram Bot token from @BotFather (used to verify initData + send admin msgs)
+# INTERNAL_SECRET  — Shared secret for /internal/* endpoints; must match the bot worker and GitHub Actions secret
 
 [[d1_databases]]
 binding = "DB"

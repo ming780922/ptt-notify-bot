@@ -3,15 +3,17 @@
 
 import asyncio
 import os
+import random
 import time
 import re
 import traceback
 
 import httpx
 from bs4 import BeautifulSoup
+from shared import send_admin_alert
 
-API_WORKER_URL = os.environ["API_WORKER_URL"].rstrip("/")
-INTERNAL_SECRET = os.environ["INTERNAL_SECRET"]
+API_WORKER_URL = os.environ.get("API_WORKER_URL", "").rstrip("/")
+INTERNAL_SECRET = os.environ.get("INTERNAL_SECRET", "")
 
 CRAWL_MAX_RUNTIME = 4 * 3600   # 4 hours, hard ceiling
 CRAWL_JOB_TIMEOUT = 30         # seconds per PTT request
@@ -74,12 +76,32 @@ def parse_ptt_html(html: str) -> list[dict]:
         print(f"  [Parser Error] {e}")
         return []
 
+async def post_with_retry(client: httpx.AsyncClient, url: str, json_body: dict, max_retries: int = 3) -> None:
+    """POST to an internal API endpoint with simple retry on failure."""
+    for i in range(max_retries):
+        try:
+            resp = await client.post(url, json=json_body, headers=INTERNAL_HEADERS)
+            resp.raise_for_status()
+            return
+        except Exception as e:
+            if i == max_retries - 1:
+                raise
+            wait = (i + 1) * 2
+            print(f"  [Retry {i+1}] POST {url} failed: {repr(e)}. Retrying in {wait}s...")
+            await asyncio.sleep(wait)
+
+
 async def fetch_ptt_with_retry(client, board, max_retries=3):
     url = f"https://www.ptt.cc/bbs/{board}/index.html"
     for i in range(max_retries):
         try:
             print(f"  [{board}] Fetching (Attempt {i+1}): {url}")
             resp = await client.get(url, headers=PTT_HEADERS)
+            if resp.status_code == 429:
+                retry_after = int(resp.headers.get("Retry-After", (i + 1) * 5))
+                print(f"  [{board}] Rate-limited by PTT (429). Waiting {retry_after}s...")
+                await asyncio.sleep(retry_after)
+                continue
             resp.raise_for_status()
             return resp
         except (httpx.ConnectError, httpx.ConnectTimeout, httpx.ReadTimeout, httpx.RemoteProtocolError) as e:
@@ -88,7 +110,7 @@ async def fetch_ptt_with_retry(client, board, max_retries=3):
             wait = (i + 1) * 2
             print(f"  [{board}] Connection error: {repr(e)}. Retrying in {wait}s...")
             await asyncio.sleep(wait)
-    return None
+    raise httpx.HTTPStatusError(f"PTT rate-limited after {max_retries} retries", request=None, response=None)
 
 async def main() -> None:
     # 增加 timeout 到 60 秒，並明確設定為 HTTP/1.1 避免某些環境下的 H2 問題
@@ -141,10 +163,10 @@ async def main() -> None:
                 new_articles = list(reversed(new_articles))
 
                 if articles:
-                    await client.post(
+                    await post_with_retry(
+                        client,
                         f"{API_WORKER_URL}/internal/board-snapshot",
-                        json={"board": board, "last_article_id": articles[0]["id"]},
-                        headers=INTERNAL_HEADERS,
+                        {"board": board, "last_article_id": articles[0]["id"]},
                     )
 
                 if new_articles and subscribers:
@@ -155,6 +177,7 @@ async def main() -> None:
                             if keywords and not any(
                                 kw.lower() in article["title"].lower() for kw in keywords
                             ):
+                                print(f"  [skip] board={board} article_id={article['id']} keywords={keywords}")
                                 continue
                             notifications.append({
                                 "user_id": sub["user_id"], "board": board,
@@ -164,10 +187,10 @@ async def main() -> None:
                             })
                     for i in range(0, len(notifications), 50):
                         batch = notifications[i:i+50]
-                        await client.post(
+                        await post_with_retry(
+                            client,
                             f"{API_WORKER_URL}/internal/queue",
-                            json={"notifications": batch},
-                            headers=INTERNAL_HEADERS,
+                            {"notifications": batch},
                         )
 
             except Exception as e:
@@ -175,15 +198,26 @@ async def main() -> None:
                 traceback.print_exc()
 
             try:
-                await client.post(
+                await post_with_retry(
+                    client,
                     f"{API_WORKER_URL}/internal/board-snapshot",
-                    json={"board": board, "mark_done": True},
-                    headers=INTERNAL_HEADERS,
+                    {"board": board, "mark_done": True},
                 )
             except Exception as e:
                 print(f"Error marking {board} done: {e}")
 
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(0.5 + random.uniform(0, 2))
+
+async def _run() -> None:
+    if len(INTERNAL_SECRET) < 32:
+        raise ValueError("INTERNAL_SECRET must be at least 32 characters")
+    try:
+        await main()
+    except Exception as e:
+        async with httpx.AsyncClient() as client:
+            await send_admin_alert(client, "Crawler", f"Crawler crashed: {repr(e)}")
+        raise
+
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(_run())

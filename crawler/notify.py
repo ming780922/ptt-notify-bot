@@ -10,14 +10,12 @@ import re
 import time
 
 import httpx
+from shared import send_admin_alert
 
-API_WORKER_URL = os.environ["API_WORKER_URL"].rstrip("/")
-INTERNAL_SECRET = os.environ["INTERNAL_SECRET"]
-TELEGRAM_BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
-MINIAPP_URL = os.environ["MINIAPP_URL"].rstrip("/")
-
-if not MINIAPP_URL.startswith("https://"):
-    raise ValueError(f"MINIAPP_URL must be an https URL, got: {MINIAPP_URL!r}")
+API_WORKER_URL = os.environ.get("API_WORKER_URL", "").rstrip("/")
+INTERNAL_SECRET = os.environ.get("INTERNAL_SECRET", "")
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+MINIAPP_URL = os.environ.get("MINIAPP_URL", "").rstrip("/")
 
 FREE_BOARDS_LIMIT = 2
 
@@ -122,82 +120,91 @@ async def send_expiry_notice(client: httpx.AsyncClient, n: dict) -> None:
 
 # ── Main loop ─────────────────────────────────────────────────────────────────
 
-async def main() -> None:
-    async with httpx.AsyncClient() as client:
-        while True:
-            # 1. Fetch a batch of pending notifications
+async def main(client: httpx.AsyncClient) -> None:
+    while True:
+        try:
+            resp = await client.get(
+                f"{API_WORKER_URL}/internal/pending-notifications",
+                headers=INTERNAL_HEADERS,
+                timeout=15,
+            )
+            resp.raise_for_status()
+            notifications = resp.json()
+        except Exception as e:
+            print(f"Error fetching pending notifications: {e}")
+            break
+
+        if not notifications:
+            print("No pending notifications, exiting")
+            break
+
+        print(f"Processing {len(notifications)} notification(s)…")
+        updates: list[dict] = []
+        expiry_sent_users: set[int] = set()
+
+        for n in notifications:
+            board_rank: int = n.get("board_rank") or 1
+            ad_unlocked_at: int = n.get("ad_unlocked_at") or 0
+            expiry_notified: int = n.get("expiry_notified") or 0
+            is_unlocked = ad_unlocked_at > time.time()
+            user_id: int = n["user_id"]
+
+            print(f"  [Debug] ID: {n['id']}, Rank: {board_rank}, UnlockedAt: {ad_unlocked_at}, ExpiryNotified: {expiry_notified}, IsUnlocked: {is_unlocked}")
+
             try:
-                resp = await client.get(
-                    f"{API_WORKER_URL}/internal/pending-notifications",
+                extra_update = {}
+                needs_expiry = (
+                    board_rank > FREE_BOARDS_LIMIT
+                    and not is_unlocked
+                    and expiry_notified == 0
+                    and user_id not in expiry_sent_users
+                )
+
+                if needs_expiry:
+                    print("  [Action] Sending expiry notice...")
+                    await send_expiry_notice(client, n)
+                    extra_update = {"expiry_notified": 1}
+                    expiry_sent_users.add(user_id)
+                    await asyncio.sleep(0.1)
+
+                if board_rank <= FREE_BOARDS_LIMIT or is_unlocked:
+                    await send_full_notification(client, n)
+                else:
+                    await send_hidden_notification(client, n)
+
+                updates.append({"id": n["id"], "status": "sent", **extra_update})
+
+            except Exception as e:
+                print(f"Error sending notification {n['id']}: {e}")
+                updates.append({"id": n["id"], "status": "failed"})
+
+            await asyncio.sleep(0.1)
+
+        if updates:
+            try:
+                await client.post(
+                    f"{API_WORKER_URL}/internal/notification-status",
+                    json={"updates": updates},
                     headers=INTERNAL_HEADERS,
                     timeout=15,
                 )
-                resp.raise_for_status()
-                notifications = resp.json()
             except Exception as e:
-                print(f"Error fetching pending notifications: {e}")
-                break
+                print(f"Error updating notification statuses: {e}")
 
-            if not notifications:
-                print("No pending notifications, exiting")
-                break
 
-            print(f"Processing {len(notifications)} notification(s)…")
-            updates: list[dict] = []
-            sent_expiry_this_run = False # 確保本次執行只發送一次提醒
+async def _run() -> None:
+    if len(INTERNAL_SECRET) < 32:
+        raise ValueError("INTERNAL_SECRET must be at least 32 characters")
+    if not MINIAPP_URL.startswith("https://"):
+        raise ValueError(f"MINIAPP_URL must be an https URL, got: {MINIAPP_URL!r}")
 
-            for n in notifications:
-                board_rank: int = n.get("board_rank") or 1
-                ad_unlocked_at: int = n.get("ad_unlocked_at") or 0
-                expiry_notified: int = n.get("expiry_notified") or 0
-                is_unlocked = ad_unlocked_at > time.time()
-                
-                print(f"  [Debug] ID: {n['id']}, Rank: {board_rank}, UnlockedAt: {ad_unlocked_at}, ExpiryNotified: {expiry_notified}, IsUnlocked: {is_unlocked}")
-
-                try:
-                    extra_update = {}
-                    needs_expiry = (
-                        board_rank > FREE_BOARDS_LIMIT
-                        and not is_unlocked
-                        and expiry_notified == 0
-                        and not sent_expiry_this_run
-                    )
-
-                    # 1. 到期提醒優先發送，讓使用者先看到說明再看隱藏通知
-                    if needs_expiry:
-                        print("  [Action] Sending expiry notice...")
-                        await send_expiry_notice(client, n)
-                        extra_update = {"expiry_notified": 1}
-                        sent_expiry_this_run = True
-                        await asyncio.sleep(0.1)
-
-                    # 2. 發送文章通知
-                    if board_rank <= FREE_BOARDS_LIMIT or is_unlocked:
-                        await send_full_notification(client, n)
-                    else:
-                        await send_hidden_notification(client, n)
-
-                    # 3. 記錄狀態更新
-                    updates.append({"id": n["id"], "status": "sent", **extra_update})
-
-                except Exception as e:
-                    print(f"Error sending notification {n['id']}: {e}")
-                    updates.append({"id": n["id"], "status": "failed"})
-
-                await asyncio.sleep(0.1)
-
-            # 2. Batch-update statuses
-            if updates:
-                try:
-                    await client.post(
-                        f"{API_WORKER_URL}/internal/notification-status",
-                        json={"updates": updates},
-                        headers=INTERNAL_HEADERS,
-                        timeout=15,
-                    )
-                except Exception as e:
-                    print(f"Error updating notification statuses: {e}")
+    async with httpx.AsyncClient() as client:
+        try:
+            await main(client)
+        except Exception as e:
+            await send_admin_alert(client, "Notifier", f"Notifier crashed: {repr(e)}")
+            raise
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(_run())
