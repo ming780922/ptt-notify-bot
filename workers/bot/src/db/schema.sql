@@ -56,6 +56,30 @@ CREATE TABLE pending_notifications (
   UNIQUE(user_id, article_id)
 );
 
+CREATE TABLE post_watches (
+  id                INTEGER  PRIMARY KEY AUTOINCREMENT,
+  user_id           INTEGER  REFERENCES users(telegram_id) ON DELETE CASCADE,
+  board             TEXT     NOT NULL,
+  article_id        TEXT     NOT NULL,
+  article_url       TEXT     NOT NULL,
+  article_title     TEXT,
+  last_reply_count  INTEGER  DEFAULT 0,
+  status            TEXT     DEFAULT 'active',
+  created_at        INTEGER  DEFAULT (unixepoch()),
+  last_checked_at   INTEGER  DEFAULT (unixepoch()),
+  UNIQUE(user_id, article_id)
+);
+
+CREATE TABLE post_watch_queue (
+  id            INTEGER  PRIMARY KEY AUTOINCREMENT,
+  status        TEXT     DEFAULT 'pending',
+  dispatched_at INTEGER  DEFAULT (unixepoch())
+);
+
+CREATE INDEX idx_post_watches_user_id ON post_watches(user_id);
+CREATE INDEX idx_post_watches_status  ON post_watches(status, last_checked_at);
+CREATE INDEX idx_post_watch_queue_status ON post_watch_queue(status);
+
 CREATE INDEX idx_subscriptions_user_id ON subscriptions(user_id);
 CREATE INDEX idx_subscriptions_board ON subscriptions(board);
 CREATE INDEX idx_pending_notifications_status ON pending_notifications(status, created_at);

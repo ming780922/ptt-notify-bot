@@ -19,3 +19,13 @@ export interface UserState {
   subscription_count: number
   ad_enabled_unlock: boolean
 }
+
+export interface PostWatch {
+  id:               number
+  board:            string
+  article_id:       string
+  article_url:      string
+  article_title:    string | null
+  last_reply_count: number
+  created_at:       number
+}

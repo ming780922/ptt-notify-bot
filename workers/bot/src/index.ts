@@ -5,8 +5,9 @@ import {
   getActiveBoardsWithSubscribers,
   enqueueCrawlBoards,
   cleanupOldNotifications,
+  enqueuePostWatchJob,
 } from './db/queries'
-import { dispatchCrawler, dispatchNotifier, getActiveCrawlRunCount } from './utils/dispatch'
+import { dispatchCrawler, dispatchNotifier, dispatchWatchCrawler, getActiveCrawlRunCount } from './utils/dispatch'
 import { CONFIG } from '../../shared/config'
 
 // ─── Cron identifiers ─────────────────────────────────────────────────────────
@@ -38,6 +39,7 @@ export default {
 
     if (event.cron === CRON_CRAWL) {
       ctx.waitUntil(runCrawlCron(env))
+      ctx.waitUntil(runWatchCron(env))
     } else if (event.cron === CRON_NOTIFY) {
       ctx.waitUntil(runNotifyCron(env))
     }
@@ -110,6 +112,20 @@ async function redispatchStalePendingJobs(env: Env): Promise<void> {
   } catch (err) {
     console.error('[cron:crawl] redispatch failed:', err)
     await sendAdminAlert(env, `❌ Crawler redispatch failed: ${err}`)
+  }
+}
+
+// ─── Cron: */5 — enqueue & dispatch watch crawler ────────────────────────────
+
+async function runWatchCron(env: Env): Promise<void> {
+  console.log('[cron:watch] Start: Enqueueing post watch job')
+  await enqueuePostWatchJob(env.DB)
+  try {
+    await dispatchWatchCrawler(env)
+    console.log('[cron:watch] Dispatched watch crawler (GitHub Action)')
+  } catch (err) {
+    console.error('[cron:watch] dispatchWatchCrawler failed:', err)
+    await sendAdminAlert(env, `❌ Watch crawler dispatch failed: ${err}`)
   }
 }
 

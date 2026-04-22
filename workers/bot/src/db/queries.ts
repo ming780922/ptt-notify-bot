@@ -6,6 +6,7 @@ import type {
   CrawlJob,
   PendingNotification,
   ActiveBoard,
+  PostWatch,
 } from '../../../shared/types'
 import { CONFIG } from '../../../shared/config'
 
@@ -465,6 +466,115 @@ export async function updateSubscriptionFilter(
     )
     .bind(subscriptionId, JSON.stringify(keywords))
     .run()
+}
+
+// ─── post_watches ─────────────────────────────────────────────────────────────
+
+export async function createPostWatch(
+  db: D1Database,
+  watch: Pick<PostWatch, 'user_id' | 'board' | 'article_id' | 'article_url' | 'article_title' | 'last_reply_count'>
+): Promise<PostWatch | null> {
+  await db
+    .prepare(
+      `INSERT OR IGNORE INTO post_watches
+         (user_id, board, article_id, article_url, article_title, last_reply_count)
+       VALUES (?, ?, ?, ?, ?, ?)`
+    )
+    .bind(watch.user_id, watch.board, watch.article_id, watch.article_url, watch.article_title, watch.last_reply_count)
+    .run()
+  return db
+    .prepare('SELECT * FROM post_watches WHERE user_id = ? AND article_id = ?')
+    .bind(watch.user_id, watch.article_id)
+    .first<PostWatch>()
+}
+
+export async function getPostWatchByUserAndArticle(
+  db: D1Database,
+  userId: number,
+  articleId: string
+): Promise<PostWatch | null> {
+  return db
+    .prepare('SELECT * FROM post_watches WHERE user_id = ? AND article_id = ?')
+    .bind(userId, articleId)
+    .first<PostWatch>()
+}
+
+export async function getPostWatchCount(db: D1Database, userId: number): Promise<number> {
+  const row = await db
+    .prepare(`SELECT COUNT(*) AS cnt FROM post_watches WHERE user_id = ? AND status = 'active'`)
+    .bind(userId)
+    .first<{ cnt: number }>()
+  return row?.cnt ?? 0
+}
+
+export async function getPostWatchesByUser(db: D1Database, userId: number): Promise<PostWatch[]> {
+  const result = await db
+    .prepare(`SELECT * FROM post_watches WHERE user_id = ? AND status = 'active' ORDER BY created_at DESC`)
+    .bind(userId)
+    .all<PostWatch>()
+  return result.results
+}
+
+export async function deletePostWatch(
+  db: D1Database,
+  userId: number,
+  articleId: string
+): Promise<void> {
+  await db
+    .prepare('DELETE FROM post_watches WHERE user_id = ? AND article_id = ?')
+    .bind(userId, articleId)
+    .run()
+}
+
+export async function getActivePostWatches(db: D1Database): Promise<PostWatch[]> {
+  const result = await db
+    .prepare(`SELECT * FROM post_watches WHERE status = 'active' ORDER BY last_checked_at ASC`)
+    .all<PostWatch>()
+  return result.results
+}
+
+export async function updatePostWatchResult(
+  db: D1Database,
+  userId: number,
+  articleId: string,
+  newReplyCount: number,
+  status: 'active' | 'expired'
+): Promise<void> {
+  await db
+    .prepare(
+      `UPDATE post_watches
+       SET last_reply_count = ?, last_checked_at = unixepoch(), status = ?
+       WHERE user_id = ? AND article_id = ?`
+    )
+    .bind(newReplyCount, status, userId, articleId)
+    .run()
+}
+
+export async function enqueuePostWatchJob(db: D1Database): Promise<void> {
+  await db
+    .prepare(`INSERT INTO post_watch_queue (status) VALUES ('pending')`)
+    .run()
+}
+
+export async function markPostWatchQueueDone(db: D1Database): Promise<void> {
+  await db
+    .prepare(
+      `UPDATE post_watch_queue SET status = 'done'
+       WHERE id = (SELECT id FROM post_watch_queue WHERE status = 'in_progress' ORDER BY id DESC LIMIT 1)`
+    )
+    .run()
+}
+
+export async function claimPostWatchQueueJob(db: D1Database): Promise<boolean> {
+  const job = await db
+    .prepare(`SELECT id FROM post_watch_queue WHERE status = 'pending' ORDER BY id ASC LIMIT 1`)
+    .first<{ id: number }>()
+  if (!job) return false
+  await db
+    .prepare(`UPDATE post_watch_queue SET status = 'in_progress' WHERE id = ?`)
+    .bind(job.id)
+    .run()
+  return true
 }
 
 function parseKeywords(json: string): string[] {

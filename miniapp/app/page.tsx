@@ -7,6 +7,7 @@ import type { SubscriptionWithRank } from '@/lib/types'
 import SubscriptionList from '@/components/SubscriptionList'
 import AddBoardModal from '@/components/AddBoardModal'
 import EditBoardModal from '@/components/EditBoardModal'
+import PostWatchList from '@/components/PostWatchList'
 import Drawer from '@/components/Drawer'
 import FeedbackScreen from '@/components/FeedbackScreen'
 import Toast, { type ToastHandle } from '@/components/Toast'
@@ -42,6 +43,7 @@ export default function Page() {
   const [drawerOpen, setDrawerOpen]     = useState(false)
   const [feedbackOpen, setFeedbackOpen] = useState(false)
   const [booted, setBooted]             = useState(false)
+  const [activeTab, setActiveTab]       = useState<'boards' | 'watches'>('boards')
 
   const toastRef = useRef<ToastHandle>(null)
   const toast = useCallback((msg: string, type?: 'success' | 'error') => toastRef.current?.show(msg, type), [])
@@ -169,17 +171,37 @@ export default function Page() {
         </svg>
       </button>
 
-      {/* Main content */}
-      <div className="px-4 pt-4 pb-28">
-        <SubscriptionList
-          subscriptions={subscriptions}
-          onEdit={(board) => { haptic.tap(); setModal({ mode: 'edit', board }) }}
-          onAdd={() => setModal({ mode: 'create' })}
-        />
+      {/* Tab bar */}
+      <div className="flex border-b border-tg-hint/15 px-4 pt-12">
+        <button
+          onClick={() => setActiveTab('boards')}
+          className={`flex-1 py-2.5 text-[14px] font-semibold transition-colors ${activeTab === 'boards' ? 'text-tg-btn border-b-2 border-tg-btn' : 'text-tg-hint'}`}
+        >
+          訂閱看板
+        </button>
+        <button
+          onClick={() => setActiveTab('watches')}
+          className={`flex-1 py-2.5 text-[14px] font-semibold transition-colors ${activeTab === 'watches' ? 'text-tg-btn border-b-2 border-tg-btn' : 'text-tg-hint'}`}
+        >
+          追蹤文章
+        </button>
       </div>
 
-      {/* FAB — only when subscriptions exist */}
-      {subscriptions.length > 0 && (
+      {/* Main content */}
+      <div className="px-4 pt-4 pb-28">
+        {activeTab === 'boards' ? (
+          <SubscriptionList
+            subscriptions={subscriptions}
+            onEdit={(board) => { haptic.tap(); setModal({ mode: 'edit', board }) }}
+            onAdd={() => setModal({ mode: 'create' })}
+          />
+        ) : (
+          <PostWatchList toast={toast} />
+        )}
+      </div>
+
+      {/* FAB — only when subscriptions exist and on boards tab */}
+      {subscriptions.length > 0 && activeTab === 'boards' && (
         <button
           onClick={() => setModal({ mode: 'create' })}
           className="fixed bottom-6 right-4 w-14 h-14 rounded-full bg-tg-btn text-tg-btn-text shadow-lg flex items-center justify-center text-3xl font-light active:opacity-75 transition-opacity z-10"

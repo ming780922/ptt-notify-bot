@@ -65,3 +65,16 @@ export interface Article {
   url: string
   replies: number
 }
+
+export interface PostWatch {
+  id: number
+  user_id: number
+  board: string
+  article_id: string
+  article_url: string
+  article_title: string | null
+  last_reply_count: number
+  status: 'active' | 'expired'
+  created_at: number
+  last_checked_at: number
+}
