@@ -18,13 +18,16 @@ export async function handleWatchCallback(ctx: Context, env: Env): Promise<void>
     return
   }
 
-  const existing = await getPostWatchByUserAndArticle(env.DB, userId, articleId)
+  const [existing, count] = await Promise.all([
+    getPostWatchByUserAndArticle(env.DB, userId, articleId),
+    getPostWatchCount(env.DB, userId),
+  ])
+
   if (existing) {
     await ctx.answerCallbackQuery({ text: '已在追蹤中。', show_alert: false })
     return
   }
 
-  const count = await getPostWatchCount(env.DB, userId)
   if (count >= CONFIG.MAX_POST_WATCHES) {
     await ctx.answerCallbackQuery({
       text: `已達追蹤上限（${CONFIG.MAX_POST_WATCHES} 篇），請先從管理介面移除舊的追蹤。`,

@@ -126,12 +126,6 @@ async def main() -> None:
                 })
             else:
                 print(f"  [{board}] {article_id} → no change ({reply_count})")
-                results.append({
-                    "user_id": user_id,
-                    "article_id": article_id,
-                    "new_reply_count": reply_count,
-                    "status": "active",
-                })
 
             await asyncio.sleep(0.5)
 
