@@ -21,9 +21,9 @@ export default function PostWatchList({ toast }: Props) {
   }, [])
 
   const handleDelete = useCallback(async (articleId: string) => {
-    const snapshot = watches
-    setWatches((prev) => prev.filter((w) => w.article_id !== articleId))
     haptic.tap()
+    let snapshot: PostWatch[] = []
+    setWatches((prev) => { snapshot = prev; return prev.filter((w) => w.article_id !== articleId) })
     try {
       await apiFetch(`/api/post-watches/${encodeURIComponent(articleId)}`, { method: 'DELETE' })
       haptic.success()
@@ -32,7 +32,7 @@ export default function PostWatchList({ toast }: Props) {
       setWatches(snapshot)
       toast('取消失敗，請稍後再試', 'error')
     }
-  }, [watches, toast])
+  }, [toast])
 
   if (loading) {
     return (

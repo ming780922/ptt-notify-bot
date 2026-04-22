@@ -4,7 +4,7 @@ import { updateNotificationStatuses } from '../db/queries'
 
 // ─── GitHub Actions ───────────────────────────────────────────────────────────
 
-export async function dispatchCrawler(env: Env): Promise<void> {
+async function dispatchGitHubAction(env: Env, eventType: string): Promise<void> {
   const [owner, repo] = env.GH_REPO.split('/')
   const res = await fetch(
     `https://api.github.com/repos/${owner}/${repo}/dispatches`,
@@ -18,66 +18,20 @@ export async function dispatchCrawler(env: Env): Promise<void> {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        event_type: 'crawl',
+        event_type: eventType,
         client_payload: { ref: 'main' },
       }),
     }
   )
   if (!res.ok) {
     const text = await res.text()
-    throw new Error(`dispatchCrawler failed (${res.status}): ${text}`)
+    throw new Error(`dispatchGitHubAction(${eventType}) failed (${res.status}): ${text}`)
   }
 }
 
-export async function dispatchNotifier(env: Env): Promise<void> {
-  const [owner, repo] = env.GH_REPO.split('/')
-  const res = await fetch(
-    `https://api.github.com/repos/${owner}/${repo}/dispatches`,
-    {
-      method: 'POST',
-      headers: {
-        Accept: 'application/vnd.github+json',
-        Authorization: `Bearer ${env.GH_TOKEN}`,
-        'X-GitHub-Api-Version': '2022-11-28',
-        'User-Agent': 'ptt-notify-bot',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        event_type: 'notify',
-        client_payload: { ref: 'main' },
-      }),
-    }
-  )
-  if (!res.ok) {
-    const text = await res.text()
-    throw new Error(`dispatchNotifier failed (${res.status}): ${text}`)
-  }
-}
-
-export async function dispatchWatchCrawler(env: Env): Promise<void> {
-  const [owner, repo] = env.GH_REPO.split('/')
-  const res = await fetch(
-    `https://api.github.com/repos/${owner}/${repo}/dispatches`,
-    {
-      method: 'POST',
-      headers: {
-        Accept: 'application/vnd.github+json',
-        Authorization: `Bearer ${env.GH_TOKEN}`,
-        'X-GitHub-Api-Version': '2022-11-28',
-        'User-Agent': 'ptt-notify-bot',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        event_type: 'watch',
-        client_payload: { ref: 'main' },
-      }),
-    }
-  )
-  if (!res.ok) {
-    const text = await res.text()
-    throw new Error(`dispatchWatchCrawler failed (${res.status}): ${text}`)
-  }
-}
+export const dispatchCrawler      = (env: Env) => dispatchGitHubAction(env, 'crawl')
+export const dispatchNotifier     = (env: Env) => dispatchGitHubAction(env, 'notify')
+export const dispatchWatchCrawler = (env: Env) => dispatchGitHubAction(env, 'watch')
 
 export async function getActiveCrawlRunCount(env: Env): Promise<number> {
   const [owner, repo] = env.GH_REPO.split('/')
