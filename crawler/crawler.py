@@ -110,7 +110,7 @@ async def fetch_ptt_with_retry(client, board, max_retries=3):
             wait = (i + 1) * 2
             print(f"  [{board}] Connection error: {repr(e)}. Retrying in {wait}s...")
             await asyncio.sleep(wait)
-    return None
+    raise httpx.HTTPStatusError(f"PTT rate-limited after {max_retries} retries", request=None, response=None)
 
 async def main() -> None:
     # 增加 timeout 到 60 秒，並明確設定為 HTTP/1.1 避免某些環境下的 H2 問題
@@ -209,6 +209,8 @@ async def main() -> None:
             await asyncio.sleep(0.5 + random.uniform(0, 2))
 
 async def _run() -> None:
+    if len(INTERNAL_SECRET) < 32:
+        raise ValueError("INTERNAL_SECRET must be at least 32 characters")
     try:
         await main()
     except Exception as e:

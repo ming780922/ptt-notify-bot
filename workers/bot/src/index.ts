@@ -31,6 +31,11 @@ export default {
   },
 
   async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
+    if (!env.INTERNAL_SECRET || env.INTERNAL_SECRET.length < 32) {
+      console.error('[bot] INTERNAL_SECRET is missing or too short (min 32 chars)')
+      return
+    }
+
     if (event.cron === CRON_CRAWL) {
       ctx.waitUntil(runCrawlCron(env))
     } else if (event.cron === CRON_NOTIFY) {
@@ -94,6 +99,7 @@ async function redispatchStalePendingJobs(env: Env): Promise<void> {
   if (result.results.length === 0) return
 
   const staleBoards = result.results.map((r) => r.board).join(', ')
+  console.warn(`[cron:crawl] Stale pending jobs (${result.results.length} board(s): ${staleBoards}), redispatching`)
   await sendAdminAlert(env, `⚠️ Stale crawl jobs detected (${result.results.length} board(s): ${staleBoards}). Redispatching.`)
 
   const runningCount = await getActiveCrawlRunCount(env)

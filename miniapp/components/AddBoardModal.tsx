@@ -19,6 +19,7 @@ export default function AddBoardModal({ subscriptions, onClose, onAdd }: Props) 
   const [kwInput, setKwInput]             = useState('')
   const [searching, setSearching]         = useState(false)
   const [notFound, setNotFound]           = useState(false)
+  const [alreadySubscribed, setAlreadySubscribed] = useState(false)
   const [submitting, setSubmitting]       = useState(false)
 
   const searchRef  = useRef<HTMLInputElement>(null)
@@ -42,8 +43,8 @@ export default function AddBoardModal({ subscriptions, onClose, onAdd }: Props) 
   )
   const showNoResults = query.trim().length > 0 && filteredBoards.length === 0 && !selectedBoard
 
-  // Reset not-found state whenever the query changes
-  useEffect(() => { setNotFound(false) }, [query])
+  // Reset search-result states whenever the query changes
+  useEffect(() => { setNotFound(false); setAlreadySubscribed(false) }, [query])
 
   const handleSelectBoard = useCallback((name: string) => {
     setSelectedBoard(name)
@@ -59,7 +60,7 @@ export default function AddBoardModal({ subscriptions, onClose, onAdd }: Props) 
       const boards = await apiFetch<Board[]>(`/api/boards/search?q=${encodeURIComponent(q)}`)
       const match = boards.find((b) => b.name.toLowerCase() === q.toLowerCase())
       if (match && subSet.has(match.name.toLowerCase())) {
-        setNotFound(true) // already subscribed — treat as not selectable
+        setAlreadySubscribed(true)
       } else if (match) {
         handleSelectBoard(match.name)
       } else {
@@ -163,7 +164,14 @@ export default function AddBoardModal({ subscriptions, onClose, onAdd }: Props) 
               ))}
 
               {showNoResults && (
-                notFound ? (
+                alreadySubscribed ? (
+                  <div className="flex items-center gap-3 px-4 py-3 bg-tg-secondary rounded-xl">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-tg-hint flex-shrink-0">
+                      <circle cx="12" cy="12" r="10" /><path d="M12 8v4M12 16h.01" />
+                    </svg>
+                    <span className="text-tg-hint text-[15px]">已訂閱「{query}」</span>
+                  </div>
+                ) : notFound ? (
                   <div className="flex items-center gap-3 px-4 py-3 bg-tg-secondary rounded-xl">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-tg-hint flex-shrink-0">
                       <circle cx="12" cy="12" r="10" /><path d="M12 8v4M12 16h.01" />

@@ -140,13 +140,14 @@ async def main(client: httpx.AsyncClient) -> None:
 
         print(f"Processing {len(notifications)} notification(s)…")
         updates: list[dict] = []
-        sent_expiry_this_run = False
+        expiry_sent_users: set[int] = set()
 
         for n in notifications:
             board_rank: int = n.get("board_rank") or 1
             ad_unlocked_at: int = n.get("ad_unlocked_at") or 0
             expiry_notified: int = n.get("expiry_notified") or 0
             is_unlocked = ad_unlocked_at > time.time()
+            user_id: int = n["user_id"]
 
             print(f"  [Debug] ID: {n['id']}, Rank: {board_rank}, UnlockedAt: {ad_unlocked_at}, ExpiryNotified: {expiry_notified}, IsUnlocked: {is_unlocked}")
 
@@ -156,14 +157,14 @@ async def main(client: httpx.AsyncClient) -> None:
                     board_rank > FREE_BOARDS_LIMIT
                     and not is_unlocked
                     and expiry_notified == 0
-                    and not sent_expiry_this_run
+                    and user_id not in expiry_sent_users
                 )
 
                 if needs_expiry:
                     print("  [Action] Sending expiry notice...")
                     await send_expiry_notice(client, n)
                     extra_update = {"expiry_notified": 1}
-                    sent_expiry_this_run = True
+                    expiry_sent_users.add(user_id)
                     await asyncio.sleep(0.1)
 
                 if board_rank <= FREE_BOARDS_LIMIT or is_unlocked:
@@ -192,6 +193,8 @@ async def main(client: httpx.AsyncClient) -> None:
 
 
 async def _run() -> None:
+    if len(INTERNAL_SECRET) < 32:
+        raise ValueError("INTERNAL_SECRET must be at least 32 characters")
     if not MINIAPP_URL.startswith("https://"):
         raise ValueError(f"MINIAPP_URL must be an https URL, got: {MINIAPP_URL!r}")
 
