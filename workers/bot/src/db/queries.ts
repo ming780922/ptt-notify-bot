@@ -317,7 +317,6 @@ export async function enqueuePendingNotifications(
 ): Promise<void> {
   if (notifications.length === 0) return
 
-  // D1 batch API: insert one-by-one inside a batch for atomicity without hitting query size limits
   const stmts = notifications.map((n) =>
     db
       .prepare(
@@ -325,6 +324,34 @@ export async function enqueuePendingNotifications(
            (user_id, board, article_id, article_title, article_url, article_replies, board_rank)
          VALUES (?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT(user_id, article_id) DO NOTHING`
+      )
+      .bind(n.user_id, n.board, n.article_id, n.article_title, n.article_url, n.article_replies, n.board_rank)
+  )
+
+  await db.batch(stmts)
+}
+
+// Reply notifications reuse the same article_id as the original board notification which may
+// already be in the table (status=sent). DO UPDATE resets it to pending so the notifier fires.
+export async function enqueueReplyNotifications(
+  db: D1Database,
+  notifications: NotificationInsert[]
+): Promise<void> {
+  if (notifications.length === 0) return
+
+  const stmts = notifications.map((n) =>
+    db
+      .prepare(
+        `INSERT INTO pending_notifications
+           (user_id, board, article_id, article_title, article_url, article_replies, board_rank)
+         VALUES (?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(user_id, article_id) DO UPDATE SET
+           status = 'pending',
+           article_replies = excluded.article_replies,
+           board_rank = excluded.board_rank,
+           created_at = unixepoch(),
+           processed_at = NULL,
+           retry_count = 0`
       )
       .bind(n.user_id, n.board, n.article_id, n.article_title, n.article_url, n.article_replies, n.board_rank)
   )

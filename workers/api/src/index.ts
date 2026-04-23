@@ -20,6 +20,7 @@ import {
   fetchNextPendingCrawlBoard,
   markCrawlJobDone,
   enqueuePendingNotifications,
+  enqueueReplyNotifications,
   fetchPendingNotificationsWithUser,
   updateNotificationStatuses,
   getActivePostWatches,
@@ -514,7 +515,7 @@ async function handlePostWatchResults(request: Request, env: Env): Promise<Respo
   }
 
   if (notificationInserts.length > 0) {
-    await enqueuePendingNotifications(env.DB, notificationInserts)
+    await enqueueReplyNotifications(env.DB, notificationInserts)
   }
 
   return json({ ok: true, updated: body.results.length, notified: notificationInserts.length })

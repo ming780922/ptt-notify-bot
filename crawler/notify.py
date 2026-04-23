@@ -160,7 +160,7 @@ async def main(client: httpx.AsyncClient) -> None:
         expiry_sent_users: set[int] = set()
 
         for n in notifications:
-            board_rank: int = n.get("board_rank") or 1
+            board_rank = n.get("board_rank")  # None for reply notifications; never coerce to int
             ad_unlocked_at: int = n.get("ad_unlocked_at") or 0
             expiry_notified: int = n.get("expiry_notified") or 0
             is_unlocked = ad_unlocked_at > time.time()
@@ -171,7 +171,8 @@ async def main(client: httpx.AsyncClient) -> None:
             try:
                 extra_update = {}
                 needs_expiry = (
-                    board_rank > FREE_BOARDS_LIMIT
+                    board_rank is not None
+                    and board_rank > FREE_BOARDS_LIMIT
                     and not is_unlocked
                     and expiry_notified == 0
                     and user_id not in expiry_sent_users
