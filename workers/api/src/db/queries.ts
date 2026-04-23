@@ -18,6 +18,7 @@ export {
   fetchNextPendingCrawlBoard,
   markCrawlJobDone,
   enqueuePendingNotifications,
+  enqueueReplyNotifications,
   fetchPendingNotificationsWithUser,
   updateNotificationStatuses,
   updateAdUnlockedAt,
