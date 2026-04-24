@@ -91,14 +91,14 @@ async def send_full_notification(
     article_url = n.get("article_url") or ""
     pub_time = format_article_time(n.get("article_id", ""))
 
-    text = f"<b>[{html.escape(n['board'])}]</b>\n{title}"
+    text = f"<b>[{html.escape(n['board'])}]</b> 📢\n{title}"
     if pub_time:
         text += f"\n{pub_time}"
     if article_url:
         text += f"\n{article_url}"
 
     article_id = n.get("article_id", "")
-    keyboard = [[{"text": "追蹤留言 🔔", "callback_data": f"watch:{article_id}"}]] if article_id else []
+    keyboard = [[{"text": "💬追蹤新推文", "callback_data": f"watch:{article_id}"}]] if article_id else []
     await send_message(client, n["user_id"], text, keyboard)
 
 
@@ -108,11 +108,11 @@ async def send_reply_notification(client: httpx.AsyncClient, n: dict) -> None:
     raw_title = n.get("article_title") or ""
     reply_count = n.get("article_replies") or 0
 
-    text = f"<b>[{html.escape(n['board'])}]</b>\n{html.escape(raw_title)} 💬 {reply_count}"
+    text = f"<b>[{html.escape(n['board'])}]</b> 💬 {reply_count} 則推文\n{html.escape(raw_title)}"
     if article_url:
         text += f"\n{article_url}"
 
-    keyboard = [[{"text": "取消追蹤 ✕", "callback_data": f"unwatch:{article_id}"}]] if article_id else []
+    keyboard = [[{"text": "❌取消追蹤", "callback_data": f"unwatch:{article_id}"}]] if article_id else []
     await send_message(client, n["user_id"], text, keyboard)
 
 
