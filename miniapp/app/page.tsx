@@ -44,6 +44,7 @@ export default function Page() {
   const [feedbackOpen, setFeedbackOpen] = useState(false)
   const [booted, setBooted]             = useState(false)
   const [activeTab, setActiveTab]       = useState<'boards' | 'watches'>('boards')
+  const [watchCount, setWatchCount]     = useState(0)
 
   const toastRef = useRef<ToastHandle>(null)
   const toast = useCallback((msg: string, type?: 'success' | 'error') => toastRef.current?.show(msg, type), [])
@@ -158,37 +159,55 @@ export default function Page() {
 
   return (
     <div className="relative bg-tg-bg min-h-screen">
-      {/* Hamburger button */}
-      <button
-        onClick={() => setDrawerOpen(true)}
-        className="absolute top-4 left-4 z-10 p-1 text-tg-hint active:opacity-60 transition-opacity"
-        aria-label="選單"
-      >
-        <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-          <line x1="2" y1="5"  x2="20" y2="5"  />
-          <line x1="2" y1="11" x2="20" y2="11" />
-          <line x1="2" y1="17" x2="20" y2="17" />
-        </svg>
-      </button>
+      {/* Unified header — hamburger + tabs in one grouped card */}
+      <div className="px-3.5 pt-3.5 pb-3">
+        <div className="flex items-center gap-1 bg-tg-secondary rounded-xl p-1">
+          {/* Hamburger */}
+          <button
+            onClick={() => setDrawerOpen(true)}
+            className="w-9 h-[34px] flex items-center justify-center rounded-lg text-tg-hint active:opacity-60 transition-opacity flex-shrink-0"
+            aria-label="選單"
+          >
+            <svg width="18" height="14" viewBox="0 0 18 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+              <line x1="1" y1="1"  x2="17" y2="1"  />
+              <line x1="1" y1="7"  x2="17" y2="7"  />
+              <line x1="1" y1="13" x2="17" y2="13" />
+            </svg>
+          </button>
 
-      {/* Tab bar */}
-      <div className="flex border-b border-tg-hint/15 px-4 pt-12">
-        <button
-          onClick={() => setActiveTab('boards')}
-          className={`flex-1 py-2.5 text-[14px] font-semibold transition-colors ${activeTab === 'boards' ? 'text-tg-btn border-b-2 border-tg-btn' : 'text-tg-hint'}`}
-        >
-          訂閱看板
-        </button>
-        <button
-          onClick={() => setActiveTab('watches')}
-          className={`flex-1 py-2.5 text-[14px] font-semibold transition-colors ${activeTab === 'watches' ? 'text-tg-btn border-b-2 border-tg-btn' : 'text-tg-hint'}`}
-        >
-          追蹤文章
-        </button>
+          {/* Divider */}
+          <div className="w-px self-stretch my-2 bg-tg-hint/20 flex-shrink-0" />
+
+          {/* Tab: 訂閱看板 */}
+          <button
+            onClick={() => setActiveTab('boards')}
+            className={`flex-1 h-[34px] rounded-lg text-[13px] font-semibold transition-all flex items-center justify-center gap-1.5
+              ${activeTab === 'boards' ? 'bg-tg-btn text-tg-btn-text shadow-sm' : 'bg-transparent text-tg-hint'}`}
+          >
+            訂閱看板
+            <span className={`text-[10px] font-bold px-1 min-w-[16px] h-4 rounded-full flex items-center justify-center
+              ${activeTab === 'boards' ? 'bg-white/25 text-white' : 'bg-tg-bg text-tg-hint'}`}>
+              {subscriptions.length}
+            </span>
+          </button>
+
+          {/* Tab: 追蹤文章 */}
+          <button
+            onClick={() => setActiveTab('watches')}
+            className={`flex-1 h-[34px] rounded-lg text-[13px] font-semibold transition-all flex items-center justify-center gap-1.5
+              ${activeTab === 'watches' ? 'bg-tg-btn text-tg-btn-text shadow-sm' : 'bg-transparent text-tg-hint'}`}
+          >
+            追蹤文章
+            <span className={`text-[10px] font-bold px-1 min-w-[16px] h-4 rounded-full flex items-center justify-center
+              ${activeTab === 'watches' ? 'bg-white/25 text-white' : 'bg-tg-bg text-tg-hint'}`}>
+              {watchCount}
+            </span>
+          </button>
+        </div>
       </div>
 
       {/* Main content */}
-      <div className="px-4 pt-4 pb-28">
+      <div className="px-4 pt-2 pb-28">
         {activeTab === 'boards' ? (
           <SubscriptionList
             subscriptions={subscriptions}
@@ -196,7 +215,7 @@ export default function Page() {
             onAdd={() => setModal({ mode: 'create' })}
           />
         ) : (
-          <PostWatchList toast={toast} />
+          <PostWatchList toast={toast} onCountChange={setWatchCount} />
         )}
       </div>
 

@@ -7,32 +7,39 @@ import type { PostWatch } from '@/lib/types'
 
 interface Props {
   toast(msg: string, type?: 'success' | 'error'): void
+  onCountChange?(n: number): void
 }
 
-export default function PostWatchList({ toast }: Props) {
+export default function PostWatchList({ toast, onCountChange }: Props) {
   const [watches, setWatches] = useState<PostWatch[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     apiFetch<PostWatch[]>('/api/post-watches')
-      .then(setWatches)
-      .catch(() => setWatches([]))
+      .then((data) => { setWatches(data); onCountChange?.(data.length) })
+      .catch(() => { setWatches([]); onCountChange?.(0) })
       .finally(() => setLoading(false))
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleDelete = useCallback(async (articleId: string) => {
     haptic.tap()
     let snapshot: PostWatch[] = []
-    setWatches((prev) => { snapshot = prev; return prev.filter((w) => w.article_id !== articleId) })
+    setWatches((prev) => {
+      snapshot = prev
+      const next = prev.filter((w) => w.article_id !== articleId)
+      onCountChange?.(next.length)
+      return next
+    })
     try {
       await apiFetch(`/api/post-watches/${encodeURIComponent(articleId)}`, { method: 'DELETE' })
       haptic.success()
       toast('已取消追蹤')
     } catch {
       setWatches(snapshot)
+      onCountChange?.(snapshot.length)
       toast('取消失敗，請稍後再試', 'error')
     }
-  }, [toast])
+  }, [toast, onCountChange])
 
   if (loading) {
     return (
