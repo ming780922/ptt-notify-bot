@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { setInitData, apiFetch, ApiError } from '@/lib/api'
 import { haptic } from '@/lib/haptic'
-import type { SubscriptionWithRank } from '@/lib/types'
+import type { SubscriptionWithRank, UserState } from '@/lib/types'
 import SubscriptionList from '@/components/SubscriptionList'
 import AddBoardModal from '@/components/AddBoardModal'
 import EditBoardModal from '@/components/EditBoardModal'
@@ -85,6 +85,13 @@ export default function Page() {
     }
   }, [])
 
+  const loadUser = useCallback(async () => {
+    try {
+      const user = await apiFetch<UserState>('/api/user')
+      setWatchCount(user.watch_count)
+    } catch {}
+  }, [])
+
   // ── Boot ──────────────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -101,7 +108,7 @@ export default function Page() {
     tg.ready()
     tg.expand()
 
-    loadSubscriptions().then(() => setBooted(true))
+    Promise.all([loadSubscriptions(), loadUser()]).then(() => setBooted(true))
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Add board ─────────────────────────────────────────────────────────────

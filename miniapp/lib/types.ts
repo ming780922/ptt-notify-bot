@@ -17,6 +17,7 @@ export interface Board {
 export interface UserState {
   telegram_id:       number
   subscription_count: number
+  watch_count:        number
   ad_enabled_unlock: boolean
 }
 

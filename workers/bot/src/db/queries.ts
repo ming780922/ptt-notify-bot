@@ -128,6 +128,19 @@ export async function getSubscriptionCount(db: D1Database, userId: number): Prom
   return row?.cnt ?? 0
 }
 
+export async function getUserCounts(
+  db: D1Database,
+  userId: number
+): Promise<{ subscription_count: number; watch_count: number }> {
+  const row = await db
+    .prepare(`SELECT
+      (SELECT COUNT(*) FROM subscriptions WHERE user_id = ?) AS subscription_count,
+      (SELECT COUNT(*) FROM post_watches WHERE user_id = ? AND status = 'active') AS watch_count`)
+    .bind(userId, userId)
+    .first<{ subscription_count: number; watch_count: number }>()
+  return { subscription_count: row?.subscription_count ?? 0, watch_count: row?.watch_count ?? 0 }
+}
+
 // ─── board_snapshots ──────────────────────────────────────────────────────────
 
 export async function getBoardSnapshot(

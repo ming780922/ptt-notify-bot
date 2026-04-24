@@ -6,7 +6,7 @@ import { json, error, preflight } from './utils/cors'
 import {
   upsertUser,
   getSubscriptionsByUser,
-  getSubscriptionCount,
+  getUserCounts,
   createSubscription,
   deleteSubscription,
   getSubscriptionByUserAndBoard,
@@ -171,10 +171,11 @@ function validateKeywords(keywords: string[]): Response | null {
 // ─── API handlers ──────────────────────────────────────────────────────────────
 
 async function handleGetUser(env: Env, telegramId: number): Promise<Response> {
-  const subscription_count = await getSubscriptionCount(env.DB, telegramId)
+  const { subscription_count, watch_count } = await getUserCounts(env.DB, telegramId)
   return json({
     telegram_id: telegramId,
     subscription_count,
+    watch_count,
     ad_enabled_unlock: env.AD_ENABLED_UNLOCK === 'true',
   })
 }
